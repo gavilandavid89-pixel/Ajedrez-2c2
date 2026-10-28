@@ -1,9 +1,27 @@
 extends RefCounted
 class_name StockfishEngine
 
-const ENGINE_RESOURCE := "res://engine/stockfish/stockfish_android_arm64"
-const ENGINE_RUNTIME := "user://engine/stockfish_android_arm64"
+const ENGINE_RESOURCE_ARM32 := "res://engine/stockfish/stockfish_android_arm32"
+const ENGINE_RUNTIME_ARM32 := "user://engine/stockfish_android_arm32"
+const ENGINE_RESOURCE_ARM64 := "res://engine/stockfish/stockfish_android_arm64"
+const ENGINE_RUNTIME_ARM64 := "user://engine/stockfish_android_arm64"
 const UCI_LINE_TIMEOUT_MS := 120000
+
+func _engine_resource_path() -> String:
+    var arch := Engine.get_architecture_name().to_lower()
+    if arch.contains("arm32") or arch.contains("armv7") or arch == "arm":
+        return ENGINE_RESOURCE_ARM32
+    if arch.contains("arm64") or arch.contains("aarch64"):
+        return ENGINE_RESOURCE_ARM64
+    # En Android, si el nombre de arquitectura no está disponible, ARM32
+    # es el fallback compatible con dispositivos antiguos de 32 bits.
+    if OS.get_name() == "Android":
+        return ENGINE_RESOURCE_ARM32
+    return ENGINE_RESOURCE_ARM64
+
+func _engine_runtime_path() -> String:
+    var resource_path := _engine_resource_path()
+    return ENGINE_RUNTIME_ARM32 if resource_path == ENGINE_RESOURCE_ARM32 else ENGINE_RUNTIME_ARM64
 
 var _ready := false
 var _last_error := ""
@@ -21,11 +39,15 @@ func _file_size(path: String) -> int:
 func is_available() -> bool:
     # get_length evita cargar el ejecutable nativo completo en RAM solo para
     # comprobar su presencia (importante en teléfonos con memoria limitada).
-    return _file_size(ENGINE_RUNTIME) > 1000000 or _file_size(ENGINE_RESOURCE) > 1000000
+    var runtime := _engine_runtime_path()
+    var resource := _engine_resource_path()
+    return _file_size(runtime) > 1000000 or _file_size(resource) > 1000000
 
 func ensure_runtime_binary() -> bool:
-    var runtime_path := ProjectSettings.globalize_path(ENGINE_RUNTIME)
-    var runtime_size := _file_size(ENGINE_RUNTIME)
+    var runtime_resource := _engine_runtime_path()
+    var engine_resource := _engine_resource_path()
+    var runtime_path := ProjectSettings.globalize_path(runtime_resource)
+    var runtime_size := _file_size(runtime_resource)
     if runtime_size > 1000000:
         var existing_chmod_output: Array = []
         var existing_chmod_code := OS.execute("chmod", ["+x", runtime_path], existing_chmod_output)
@@ -33,22 +55,22 @@ func ensure_runtime_binary() -> bool:
             return true
         _last_error = "Stockfish existe, pero Android no permitió habilitar su ejecución."
         return false
-    if FileAccess.file_exists(ENGINE_RUNTIME):
+    if FileAccess.file_exists(runtime_resource):
         DirAccess.remove_absolute(runtime_path)
-    var source_size := _file_size(ENGINE_RESOURCE)
+    var source_size := _file_size(engine_resource)
     if source_size <= 1000000:
-        _last_error = "No se encontró el binario de Stockfish 19 para Android ARM64."
+        _last_error = "No se encontró el binario de Stockfish 19 compatible con la arquitectura del dispositivo."
         return false
     var runtime_dir := runtime_path.get_base_dir()
     var dir_error := DirAccess.make_dir_recursive_absolute(runtime_dir)
     if dir_error != OK and not DirAccess.dir_exists_absolute(runtime_dir):
         _last_error = "No se pudo crear el directorio de ejecución de Stockfish."
         return false
-    var source := FileAccess.open(ENGINE_RESOURCE, FileAccess.READ)
+    var source := FileAccess.open(engine_resource, FileAccess.READ)
     if source == null:
         _last_error = "No se pudo abrir el binario de Stockfish incluido."
         return false
-    var target := FileAccess.open(ENGINE_RUNTIME, FileAccess.WRITE)
+    var target := FileAccess.open(runtime_resource, FileAccess.WRITE)
     if target == null:
         source.close()
         _last_error = "No se pudo crear el archivo de ejecución de Stockfish."
@@ -64,7 +86,7 @@ func ensure_runtime_binary() -> bool:
         copied += chunk.size()
     source.close()
     target.close()
-    if copied != source_size or _file_size(ENGINE_RUNTIME) != source_size:
+    if copied != source_size or _file_size(runtime_resource) != source_size:
         DirAccess.remove_absolute(runtime_path)
         _last_error = "La copia de Stockfish quedó incompleta; vuelve a intentarlo."
         return false
@@ -90,7 +112,7 @@ func analyze_positions(fens: Array[String], moves_uci: Array[String], depth: int
     multi_pv = clampi(multi_pv, 1, 5)
     if not ensure_runtime_binary():
         return {"ok": false, "error": _last_error, "moves": []}
-    return _analyze_with_binary(ProjectSettings.globalize_path(ENGINE_RUNTIME), fens, moves_uci, depth, multi_pv)
+    return _analyze_with_binary(ProjectSettings.globalize_path(_engine_runtime_path()), fens, moves_uci, depth, multi_pv)
 
 # Ejecuta un protocolo UCI secuencial: cada búsqueda termina en bestmove antes
 # de enviar la siguiente posición. Así no se cancelan búsquedas ni se mezclan
