@@ -1,0 +1,64 @@
+name: Validate Stockfish ARM binaries and chess tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ajedrez_2c2_v161/domain/bots/stockfish_engine.gd"
+      - "ajedrez_2c2_v161/tests/**"
+      - "ajedrez_2c2_v161/engine/stockfish/**"
+      - ".github/workflows/validate-stockfish-architectures.yml"
+  pull_request:
+    paths:
+      - "ajedrez_2c2_v161/domain/bots/stockfish_engine.gd"
+      - "ajedrez_2c2_v161/tests/**"
+      - "ajedrez_2c2_v161/engine/stockfish/**"
+      - ".github/workflows/validate-stockfish-architectures.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Validate both native executable architectures
+        shell: bash
+        run: |
+          set -euo pipefail
+          arm32="ajedrez_2c2_v161/engine/stockfish/stockfish_android_arm32"
+          arm64="ajedrez_2c2_v161/engine/stockfish/stockfish_android_arm64"
+          test -s "$arm32"
+          test -s "$arm64"
+          test "$(stat -c %s "$arm32")" -gt 1000000
+          test "$(stat -c %s "$arm64")" -gt 1000000
+          file "$arm32" | grep -q 'ELF 32-bit.*ARM'
+          file "$arm64" | grep -q 'ELF 64-bit.*ARM aarch64'
+          readelf -h "$arm32" | grep -E 'Class:.*ELF32'
+          readelf -h "$arm32" | grep -E 'Machine:.*ARM'
+          readelf -h "$arm64" | grep -E 'Class:.*ELF64'
+          readelf -h "$arm64" | grep -E 'Machine:.*AArch64'
+          echo "ARM32 and ARM64 ELF validation passed."
+
+      - name: Install Godot 4.7.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            "https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip" \
+            -o /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          chmod +x /tmp/godot/Godot_v4.7.2-stable_linux.x86_64
+          echo "/tmp/godot" >> "$GITHUB_PATH"
+
+      - name: Import project and parse scripts
+        run: Godot_v4.7.2-stable_linux.x86_64 --headless --editor --path ajedrez_2c2_v161 --quit
+
+      - name: Run chess, UCI, and ABI regression tests
+        run: Godot_v4.7.2-stable_linux.x86_64 --headless --path ajedrez_2c2_v161 --script res://tests/run_tests.gd
