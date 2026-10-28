@@ -7,6 +7,7 @@ const PlayerCardScene = preload("res://scenes/player_card.tscn")
 const PlayerDataScript = preload("res://domain/player/player_data.gd")
 const EngineReviewTests = preload("res://tests/engine_review_integration_tests.gd")
 const StockfishProtocolTests = preload("res://tests/stockfish_uci_protocol_tests.gd")
+const StockfishArchitectureTests = preload("res://tests/stockfish_architecture_tests.gd")
 
 var passed := 0
 var failed := 0
@@ -68,6 +69,10 @@ func _initialize() -> void:
     for protocol_failure in uci_report.get("failed", []):
         push_error("STOCKFISH UCI: " + String(protocol_failure))
     _test("Stockfish waits for bestmove and keeps per-position scores", Array(uci_report.get("failed", [])).is_empty())
+    var architecture_report := StockfishArchitectureTests.new().run()
+    for architecture_failure in architecture_report.get("failed", []):
+        push_error("STOCKFISH ABI: " + String(architecture_failure))
+    _test("Stockfish selects matching ARM32/ARM64 binary", Array(architecture_report.get("failed", [])).is_empty())
     _test("NEXUS rejects unknown outcomes instead of counting a draw", _invalid_outcome_test())
 
     print("\nRESULTADO FINAL: %d OK / %d FALLARON" % [passed, failed])
