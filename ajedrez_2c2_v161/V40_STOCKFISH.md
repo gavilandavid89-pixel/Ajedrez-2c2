@@ -13,13 +13,9 @@
 
 ## Motor
 
-La integración espera el binario oficial de Stockfish 19 para Android ARM64 en:
+La integración incluye binarios oficiales de Stockfish 19 para Android ARM32 (ARMv7 NEON) y ARM64 (AArch64), y selecciona el correspondiente a la arquitectura detectada. La copia a `user://` y el permiso de ejecución se intentan en tiempo de ejecución, pero eso no demuestra que Android permita ejecutar el archivo en todos los dispositivos/versiones. La prueba UCI con el binario real en una exportación Android instalada sigue pendiente; no debe confundirse con las pruebas del protocolo simulado.
 
-`res://engine/stockfish/stockfish_android_arm64`
-
-Al primer uso se copia a `user://engine/` y se ejecuta desde allí. No se usa almacenamiento público.
-
-La descarga oficial de Stockfish ofrece un paquete Android ARM64 y Stockfish usa el protocolo UCI. La distribución debe conservar las obligaciones de GPLv3 y el código fuente correspondiente.
+La distribución debe conservar las obligaciones de GPLv3 y el código fuente correspondiente. La validación automatizada de ABI y regresión se encuentra en `.github/workflows/validate-stockfish-architectures.yml`.
 
 ## Estado de la prueba
 
