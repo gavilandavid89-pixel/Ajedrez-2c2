@@ -13,14 +13,14 @@ func _engine_resource_path() -> String:
         return ENGINE_RESOURCE_ARM32
     if arch.contains("arm64") or arch.contains("aarch64"):
         return ENGINE_RESOURCE_ARM64
-    # En Android, si el nombre de arquitectura no está disponible, ARM32
-    # es el fallback compatible con dispositivos antiguos de 32 bits.
-    if OS.get_name() == "Android":
-        return ENGINE_RESOURCE_ARM32
-    return ENGINE_RESOURCE_ARM64
+    # Nunca adivinar la ABI: seleccionar un ejecutable de otra arquitectura
+    # produce un fallo difícil de diagnosticar, especialmente en Android.
+    return ""
 
 func _engine_runtime_path() -> String:
     var resource_path := _engine_resource_path()
+    if resource_path.is_empty():
+        return ""
     return ENGINE_RUNTIME_ARM32 if resource_path == ENGINE_RESOURCE_ARM32 else ENGINE_RUNTIME_ARM64
 
 var _ready := false
@@ -41,11 +41,16 @@ func is_available() -> bool:
     # comprobar su presencia (importante en teléfonos con memoria limitada).
     var runtime := _engine_runtime_path()
     var resource := _engine_resource_path()
+    if runtime.is_empty() or resource.is_empty():
+        return false
     return _file_size(runtime) > 1000000 or _file_size(resource) > 1000000
 
 func ensure_runtime_binary() -> bool:
     var runtime_resource := _engine_runtime_path()
     var engine_resource := _engine_resource_path()
+    if runtime_resource.is_empty() or engine_resource.is_empty():
+        _last_error = "No se pudo identificar una arquitectura compatible para Stockfish (ARM32/ARM64)."
+        return false
     var runtime_path := ProjectSettings.globalize_path(runtime_resource)
     var runtime_size := _file_size(runtime_resource)
     if runtime_size > 1000000:
