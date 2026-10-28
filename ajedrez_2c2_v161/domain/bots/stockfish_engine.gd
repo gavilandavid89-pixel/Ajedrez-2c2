@@ -8,7 +8,11 @@ const ENGINE_RUNTIME_ARM64 := "user://engine/stockfish_android_arm64"
 const UCI_LINE_TIMEOUT_MS := 120000
 
 func _engine_resource_path() -> String:
-    var arch := Engine.get_architecture_name().to_lower()
+    return _engine_resource_path_for_arch(Engine.get_architecture_name())
+
+# Separada para probar ARM32/ARM64 sin depender de la CPU del runner de QA.
+func _engine_resource_path_for_arch(architecture_name: String) -> String:
+    var arch := architecture_name.strip_edges().to_lower()
     if arch.contains("arm32") or arch.contains("armv7") or arch == "arm":
         return ENGINE_RESOURCE_ARM32
     if arch.contains("arm64") or arch.contains("aarch64"):
