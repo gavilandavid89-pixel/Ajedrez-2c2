@@ -1,8 +1,8 @@
 name: Add official Stockfish ARM32 binary
 
 on:
-  push:
-    branches: [main]
+  # Ejecutar manualmente: el flujo sube un binario a main y no debe
+  # volver a dispararse a sí mismo después de ese commit.
   workflow_dispatch:
 
 permissions:
