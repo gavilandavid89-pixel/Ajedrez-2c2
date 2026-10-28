@@ -1,0 +1,18 @@
+{
+  "google": {
+    "web_client_id": "",
+    "android_client_id": ""
+  },
+  "facebook": {
+    "app_id": "",
+    "client_token": ""
+  },
+  "play_games": {
+    "app_id": "",
+    "server_auth_enabled": true
+  },
+  "backend": {
+    "base_url": "",
+    "authentication": "bearer"
+  }
+}

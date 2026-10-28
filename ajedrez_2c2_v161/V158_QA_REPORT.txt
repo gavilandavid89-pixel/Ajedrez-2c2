@@ -1,0 +1,28 @@
+AJEDREZ 2C2 - V158 QA REPORT
+Date: 2026-10-19
+Base: V157 replay/analysis separation
+
+IMPLEMENTED
+- Added MatchContext autoload for shared match/player/clock/result snapshots.
+- Added MatchEvents autoload for match, player, clock, replay and analysis events.
+- Added reusable ChessPlayerHeader built on the existing PlayerCard scene, including rating and clock.
+- Replay now displays player avatars/names/ratings and clock values; clock history is selected by replay position when saved data is available.
+- Replay uses ChessLayoutMetrics as its shared board-size baseline and now removes the redundant saved-result card above the board.
+- Replay mode keeps player headers/clocks/result visible. Analysis mode hides them and removes the explicit Analyze button, restoring the replay header when returning.
+- Live game publishes player, clock and match-result snapshots/events.
+- Saved results now include player colors, final clocks and clock snapshots for future replay.
+
+TESTS
+- Godot 4.7.2 editor/import command: exit 0; no script parse errors in log. On a fresh extraction, the first editor launch may log missing generated `.godot/imported` font cache entries while importing; the second editor launch is clean. The project intentionally excludes generated `.godot` cache from the ZIP.
+- Main suite: 42 passed / 0 failed.
+- Replay mode separation: 9 passed / 0 failed.
+- Match context/player header: 7 passed / 0 failed.
+- Global events: 13 passed / 0 failed.
+- Total reported checks across these suites: 71 passed / 0 failed.
+- Real Godot screenshots captured at 390x844 for live match, replay and analysis mode.
+
+LIMITATIONS
+- Linux runner has no audio device; Godot falls back to the dummy audio driver during screenshots.
+- Android physical-device validation has not been performed.
+- Legacy match records without clock snapshots cannot reconstruct historical clock times exactly; missing metadata falls back to neutral labels/default clock values.
+- The live HUD retains its existing per-slot player cards for 2c2, while Replay uses the reusable wrapper around the same PlayerCard component. Their ordering and board sizing now follow the shared layout metrics, but the HUD implementation is not yet fully migrated to a single shared layout widget.

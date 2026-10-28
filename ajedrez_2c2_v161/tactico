@@ -1,0 +1,62 @@
+{
+  "parameters": {
+    "1000": {
+      "depth": 1,
+      "noise": 80.0,
+      "randomness": 0.25
+    },
+    "1300": {
+      "depth": 1,
+      "noise": 35.0,
+      "randomness": 0.12
+    },
+    "1600": {
+      "depth": 2,
+      "noise": 8.0,
+      "randomness": 0.03
+    },
+    "400": {
+      "depth": 0,
+      "noise": 220.0,
+      "randomness": 0.7
+    },
+    "700": {
+      "depth": 0,
+      "noise": 140.0,
+      "randomness": 0.5
+    }
+  },
+  "positions": 30,
+  "report": {
+    "estratega": {
+      "acceptable_rate": 0.733333333333333,
+      "avg_quality": 0.919555555555556,
+      "blunder_rate": 0.0666666666666667,
+      "calibration_quality": 0.919555555555556
+    },
+    "experto": {
+      "acceptable_rate": 1.0,
+      "avg_quality": 0.997925925925926,
+      "blunder_rate": 0.0,
+      "calibration_quality": 0.997925925925926
+    },
+    "mateo": {
+      "acceptable_rate": 0.333333333333333,
+      "avg_quality": 0.770240740740741,
+      "blunder_rate": 0.233333333333333,
+      "calibration_quality": 0.770240740740741
+    },
+    "nora": {
+      "acceptable_rate": 0.433333333333333,
+      "avg_quality": 0.823407407407407,
+      "blunder_rate": 0.133333333333333,
+      "calibration_quality": 0.823407407407407
+    },
+    "tactico": {
+      "acceptable_rate": 0.566666666666667,
+      "avg_quality": 0.862592592592593,
+      "blunder_rate": 0.133333333333333,
+      "calibration_quality": 0.862592592592593
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "singleton": "AjedrezAuthAndroid",
+  "providers": ["google", "facebook", "play_games", "email"],
+  "methods": ["is_provider_available", "sign_in", "link_provider", "request_profile_data", "restore_session", "sign_out"],
+  "signals": ["auth_result", "profile_result"],
+  "identity_fields": ["account_id", "sub", "display_name", "email", "photo_url", "email_verified", "session_token"],
+  "security": {
+    "persist_session_tokens": false,
+    "require_backend_token_validation": true,
+    "silent_merge_external_accounts": false
+  }
+}

@@ -1,0 +1,7 @@
+Godot 4.7.2 — V128
+Import: exit 0; no SCRIPT ERROR, Parse Error, or ERROR lines in import log.
+V128 journal recovery: 8 OK / 0 FAILED
+V127 supervision integration: 15 OK / 0 FAILED
+V124 mini-agents: 12 OK / 0 FAILED
+V121 match/view session: 17 OK / 0 FAILED
+V119 transition races: 29 OK / 0 FAILED

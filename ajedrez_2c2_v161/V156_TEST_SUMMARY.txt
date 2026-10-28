@@ -1,0 +1,8 @@
+V156 — Eventos globales
+
+Godot: 4.7.2.stable.official
+Suite global_events_tests.gd: 13 OK / 0 FAIL
+Suite run_tests.gd: 42 OK / 0 FAIL
+
+Alcance: contrato de eventos ampliado, validación de fuentes y coordenadas, eventos de interacción/presentación/confirmación, integración con tablero de partida y replay.
+Limitación: análisis/estudio/puzzles aún no migrados completamente al sistema común. Android físico no validado.

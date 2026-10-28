@@ -1,0 +1,458 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://ui/screens/online_setup.gd" id="1"]
+[ext_resource type="Script" path="res://ui/components/qr_preview.gd" id="2"]
+
+[sub_resource type="StyleBoxFlat" id="dim"]
+bg_color = Color(0.02, 0.018, 0.015, 0.92)
+
+[sub_resource type="StyleBoxFlat" id="modal"]
+bg_color = Color(0.085, 0.068, 0.05, 0.985)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.62, 0.46, 0.26, 0.9)
+
+[sub_resource type="StyleBoxFlat" id="card"]
+bg_color = Color(0.11, 0.09, 0.07, 0.98)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.24, 0.17, 1)
+
+[sub_resource type="StyleBoxFlat" id="button"]
+bg_color = Color(0.16, 0.13, 0.095, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.34, 0.28, 0.21, 1)
+
+[sub_resource type="StyleBoxFlat" id="button_hover"]
+bg_color = Color(0.22, 0.18, 0.12, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.84, 0.64, 0.3, 1)
+
+[sub_resource type="StyleBoxFlat" id="primary"]
+bg_color = Color(0.24, 0.17, 0.08, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.89, 0.67, 0.31, 1)
+
+[sub_resource type="StyleBoxFlat" id="chip"]
+bg_color = Color(0.13, 0.11, 0.085, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.25, 0.19, 1)
+
+[node name="OnlineSetup" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("1")
+
+[node name="Dim" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme_override_styles/panel = SubResource("dim")
+
+[node name="Modal" type="Panel" parent="."]
+layout_mode = 0
+offset_right = 560.0
+offset_bottom = 620.0
+theme_override_styles/panel = SubResource("modal")
+
+[node name="Back" type="Button" parent="Modal"]
+visible = false
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 46.0
+offset_bottom = 46.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "‹"
+
+[node name="Close" type="Button" parent="Modal"]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -48.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 48.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "×"
+
+[node name="Title" type="Label" parent="Modal"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 16.0
+offset_right = 512.0
+offset_bottom = 50.0
+theme_override_colors/font_color = Color(0.94, 0.86, 0.7, 1)
+theme_override_font_sizes/font_size = 23
+text = "1c1 · ONLINE"
+horizontal_alignment = 1
+
+[node name="Main" type="Control" parent="Modal"]
+layout_mode = 0
+
+[node name="HintTitle" type="Label" parent="Modal/Main"]
+layout_mode = 0
+offset_top = 2.0
+offset_right = 520.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(0.78, 0.71, 0.6, 1)
+theme_override_font_sizes/font_size = 13
+text = "Elige cómo quieres entrar a la partida."
+horizontal_alignment = 1
+
+[node name="Play" type="Button" parent="Modal/Main"]
+layout_mode = 0
+theme_override_styles/normal = SubResource("primary")
+theme_override_styles/hover = SubResource("button_hover")
+theme_override_font_sizes/font_size = 19
+text = "⚔  Partida"
+
+[node name="Sub" type="Label" parent="Modal/Main/Play"]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 38.0
+offset_right = -18.0
+offset_bottom = 62.0
+theme_override_colors/font_color = Color(0.79, 0.71, 0.59, 1)
+theme_override_font_sizes/font_size = 11
+text = "Busca un rival para una partida clásica."
+horizontal_alignment = 1
+
+[node name="Friend" type="Button" parent="Modal/Main"]
+layout_mode = 0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+theme_override_font_sizes/font_size = 18
+text = "👥  Jugar con un amigo"
+
+[node name="Sub" type="Label" parent="Modal/Main/Friend"]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 38.0
+offset_right = -18.0
+offset_bottom = 62.0
+theme_override_colors/font_color = Color(0.71, 0.65, 0.56, 1)
+theme_override_font_sizes/font_size = 11
+text = "Crea una sala e invita a tu compañero."
+horizontal_alignment = 1
+
+[node name="TimeLabel" type="Label" parent="Modal/Main"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 520.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0.83, 0.75, 0.63, 1)
+theme_override_font_sizes/font_size = 13
+text = "Tiempo por jugador"
+horizontal_alignment = 1
+
+[node name="Time" type="HBoxContainer" parent="Modal/Main"]
+layout_mode = 0
+theme_override_constants/separation = 8
+
+[node name="10" type="Button" parent="Modal/Main/Time"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+toggle_mode = true
+theme_override_styles/normal = SubResource("chip")
+theme_override_styles/hover = SubResource("button_hover")
+theme_override_font_sizes/font_size = 15
+text = "10'"
+
+[node name="15" type="Button" parent="Modal/Main/Time"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+toggle_mode = true
+theme_override_styles/normal = SubResource("chip")
+theme_override_styles/hover = SubResource("button_hover")
+theme_override_font_sizes/font_size = 15
+text = "15'"
+
+[node name="20" type="Button" parent="Modal/Main/Time"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+toggle_mode = true
+theme_override_styles/normal = SubResource("chip")
+theme_override_styles/hover = SubResource("button_hover")
+theme_override_font_sizes/font_size = 15
+text = "20'"
+
+[node name="Hint" type="Label" parent="Modal/Main"]
+layout_mode = 0
+theme_override_colors/font_color = Color(0.55, 0.5, 0.43, 1)
+theme_override_font_sizes/font_size = 11
+text = "El reloj solo corre durante el turno del jugador/equipo correspondiente."
+autowrap_mode = 2
+horizontal_alignment = 1
+
+[node name="Friend" type="Control" parent="Modal"]
+visible = false
+layout_mode = 0
+
+[node name="Intro" type="Label" parent="Modal/Friend"]
+layout_mode = 0
+offset_right = 520.0
+offset_bottom = 46.0
+theme_override_colors/font_color = Color(0.82, 0.74, 0.63, 1)
+theme_override_font_sizes/font_size = 13
+text = "Crea una invitación privada y compártela con tu amigo."
+autowrap_mode = 2
+horizontal_alignment = 1
+
+[node name="InviteCard" type="Panel" parent="Modal/Friend"]
+layout_mode = 0
+theme_override_styles/panel = SubResource("card")
+
+[node name="RoomLabel" type="Label" parent="Modal/Friend/InviteCard"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 14.0
+offset_right = 280.0
+offset_bottom = 36.0
+theme_override_colors/font_color = Color(0.93, 0.85, 0.7, 1)
+theme_override_font_sizes/font_size = 13
+text = "Sala privada"
+
+[node name="Note" type="Label" parent="Modal/Friend/InviteCard"]
+layout_mode = 0
+anchor_right = 1.0
+
+offset_left = 14.0
+offset_top = 42.0
+offset_right = -14.0
+offset_bottom = 66.0
+theme_override_colors/font_color = Color(0.68, 0.61, 0.51, 1)
+theme_override_font_sizes/font_size = 11
+text = "Comparte el enlace o el QR."
+autowrap_mode = 2
+
+[node name="Link" type="Label" parent="Modal/Friend/InviteCard"]
+layout_mode = 0
+anchor_right = 1.0
+
+offset_left = 14.0
+offset_top = 72.0
+offset_right = -14.0
+offset_bottom = 98.0
+theme_override_colors/font_color = Color(0.82, 0.72, 0.55, 1)
+theme_override_font_sizes/font_size = 10
+text = "https://ajedrez2c2.app/r/------"
+clip_text = true
+autowrap_mode = 0
+horizontal_alignment = 1
+
+[node name="CopyLink" type="Button" parent="Modal/Friend/InviteCard"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 108.0
+offset_right = 150.0
+offset_bottom = 146.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Copiar enlace"
+
+[node name="RefreshCode" type="Button" parent="Modal/Friend/InviteCard"]
+layout_mode = 0
+offset_left = 158.0
+offset_top = 108.0
+offset_right = 294.0
+offset_bottom = 146.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Nuevo código"
+
+[node name="CopyStatus" type="Label" parent="Modal/Friend/InviteCard"]
+layout_mode = 0
+anchor_right = 1.0
+
+offset_left = 14.0
+offset_top = 146.0
+offset_right = -14.0
+offset_bottom = 168.0
+theme_override_colors/font_color = Color(0.45, 0.67, 0.48, 1)
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="QR" type="Control" parent="Modal/Friend"]
+layout_mode = 0
+script = ExtResource("2")
+
+[node name="Code" type="Label" parent="Modal/Friend"]
+layout_mode = 0
+theme_override_colors/font_color = Color(0.91, 0.82, 0.67, 1)
+theme_override_font_sizes/font_size = 15
+text = "------"
+horizontal_alignment = 1
+
+[node name="TimeLabel" type="Label" parent="Modal/Friend"]
+layout_mode = 0
+theme_override_colors/font_color = Color(0.82, 0.74, 0.63, 1)
+theme_override_font_sizes/font_size = 13
+text = "Tiempo por jugador"
+horizontal_alignment = 1
+
+[node name="Time" type="HBoxContainer" parent="Modal/Friend"]
+layout_mode = 0
+theme_override_constants/separation = 8
+
+[node name="10" type="Button" parent="Modal/Friend/Time"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+toggle_mode = true
+theme_override_styles/normal = SubResource("chip")
+theme_override_styles/hover = SubResource("button_hover")
+text = "10'"
+
+[node name="15" type="Button" parent="Modal/Friend/Time"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+toggle_mode = true
+theme_override_styles/normal = SubResource("chip")
+theme_override_styles/hover = SubResource("button_hover")
+text = "15'"
+
+[node name="20" type="Button" parent="Modal/Friend/Time"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+toggle_mode = true
+theme_override_styles/normal = SubResource("chip")
+theme_override_styles/hover = SubResource("button_hover")
+text = "20'"
+
+[node name="Create" type="Button" parent="Modal/Friend"]
+layout_mode = 0
+theme_override_styles/normal = SubResource("primary")
+theme_override_styles/hover = SubResource("button_hover")
+theme_override_font_sizes/font_size = 17
+text = "Crear sala"
+
+[node name="JoinRoom" type="Button" parent="Modal/Friend"]
+layout_mode = 0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+theme_override_font_sizes/font_size = 16
+text = "Unirse a una sala"
+
+[node name="Back" type="Button" parent="Modal/Friend"]
+layout_mode = 0
+text = "← Volver"
+
+[node name="Join" type="Control" parent="Modal"]
+visible = false
+layout_mode = 0
+
+[node name="Intro" type="Label" parent="Modal/Join"]
+layout_mode = 0
+offset_right = 520.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.82, 0.74, 0.63, 1)
+theme_override_font_sizes/font_size = 13
+text = "Introduce el código o pega el enlace que te compartió tu amigo."
+autowrap_mode = 2
+horizontal_alignment = 1
+
+[node name="CodeInput" type="LineEdit" parent="Modal/Join"]
+layout_mode = 0
+placeholder_text = "Código de sala o enlace de invitación"
+text = ""
+max_length = 256
+alignment = 1
+theme_override_colors/font_color = Color(0.94, 0.88, 0.76, 1)
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("card")
+
+[node name="Paste" type="Button" parent="Modal/Join"]
+layout_mode = 0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Pegar enlace del portapapeles"
+
+[node name="Status" type="Label" parent="Modal/Join"]
+layout_mode = 0
+theme_override_colors/font_color = Color(0.43, 0.62, 0.46, 1)
+theme_override_font_sizes/font_size = 11
+text = ""
+autowrap_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Hint" type="Label" parent="Modal/Join"]
+layout_mode = 0
+theme_override_colors/font_color = Color(0.55, 0.5, 0.43, 1)
+theme_override_font_sizes/font_size = 11
+text = "En 1c1 entrarás como rival del anfitrión."
+autowrap_mode = 2
+horizontal_alignment = 1
+
+[node name="RoomSettings" type="Label" parent="Modal/Join"]
+layout_mode = 0
+theme_override_colors/font_color = Color(0.55, 0.5, 0.43, 1)
+theme_override_font_sizes/font_size = 11
+text = "El tiempo y las reglas se toman de la sala del anfitrión."
+autowrap_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Join" type="Button" parent="Modal/Join"]
+layout_mode = 0
+theme_override_styles/normal = SubResource("primary")
+theme_override_styles/hover = SubResource("button_hover")
+theme_override_font_sizes/font_size = 17
+text = "Unirse a la sala"
+
+[node name="Back" type="Button" parent="Modal/Join"]
+layout_mode = 0
+text = "← Volver"
+

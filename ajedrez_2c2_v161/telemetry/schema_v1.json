@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "event_type": "competitive_match_result",
+  "required": ["event_id","timestamp","match_id","mode","outcome","actor_key","rating_before","rating_after","rating_delta","opponent_rating_before","expected","surprise","uncertainty_before","uncertainty_after"],
+  "optional": ["opponent_pair_rating_before","partner_rating_before","pair_expected","pair_rating_before","pair_effect_before","pair_uncertainty_before","pair_uncertainty_after","pair_effect","pair_rating_delta","pair_rating_after","move_count","match_minutes","bot_id","bot_nexus","bot_engine_rating","season_id","nexus_version"]
+}

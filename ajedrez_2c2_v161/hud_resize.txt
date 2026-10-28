@@ -1,0 +1,381 @@
+    var start: int = max(0, count - 10)
+    var parts: Array[String] = []
+    for i in range(start, count):
+        var move: Dictionary = game.move_history[i]
+        var prefix := "%d. " % [i / 2 + 1] if i % 2 == 0 else ""
+        var separator := "  " if i % 2 == 0 else "   "
+        parts.append(prefix + String(move.get("from", "")) + "→" + String(move.get("to", "")) + separator)
+    return " ".join(parts).strip_edges()
+
+func _status_text() -> String:
+    if not game.running:
+        return "Partida terminada"
+    if game.pending_promotion != game.NO_SQUARE:
+        return "Elige la promoción de tu peón"
+    if game.mode == MODE_2C2:
+        if not game.suggestion.is_empty():
+            return "Hay una sugerencia esperando. Puedes revisarla antes de mover."
+        if not game.swap_request.is_empty():
+            return "Tu compañero propuso un cambio de posición."
+    var team := "blancas" if game.current_team() == game.TEAM_WHITE else "negras"
+    return "Turno de las %s" % team.capitalize()
+
+func _signed_value(value: int) -> String:
+    return "+%d" % value if value > 0 else str(value)
+
+func _result_text() -> String:
+    var lines: Array[String] = []
+    if game.winner_team < 0:
+        lines.append("TABLAS")
+    else:
+        var local_team: int = int(game.slot_colors[0]) if game.slot_colors.size() > 0 else -1
+        var personal := "VICTORIA" if local_team == game.winner_team else "DERROTA"
+        var is_mate := String(game.winner_reason).to_lower().contains("mate")
+        lines.append("JAQUE MATE" if is_mate else personal)
+        if is_mate:
+            lines.append(personal)
+        # En 1c1 el resultado personal ya comunica el desenlace; evitamos
+        # una línea redundante para reservar espacio al progreso competitivo.
+        if game.mode != MODE_1C1:
+            lines.append("Ganan las blancas" if game.winner_team == game.TEAM_WHITE else "Ganan las negras")
+    if game.winner_team < 0:
+        lines.append(String(game.winner_reason))
+    if not result_entry.is_empty() and bool(result_entry.get("competitive", game.mode == MODE_2C2 or game.mode == MODE_1C1)):
+        var rating_delta := int(result_entry.get("rating_delta", 0))
+        var cup_delta := int(result_entry.get("cup_delta", 0))
+        # El 1c1 muestra su progreso propio en el resultado; 2c2 conserva
+        # exactamente su presentación actual.
+        lines.append("Rating %s · Copas %s" % [_signed_value(rating_delta), _signed_value(cup_delta)])
+        if game.mode == MODE_1C1:
+            var rating_after := int(result_entry.get("rating_after", 0))
+            var cups_after := int(result_entry.get("cups_after", 0))
+            var league_after := String(result_entry.get("league_after", "Bronce"))
+            var streak_after := int(result_entry.get("streak_after", 0))
+            lines.append("%d · 🏆%d · %s · Racha %d" % [rating_after, cups_after, league_after, streak_after])
+    else:
+        lines.append("%d jugadas · partida guardada" % game.move_history.size())
+    return "\n".join(lines)
+
+func _animate_result_transition() -> void:
+    if not is_inside_tree() or not result_panel.visible:
+        return
+    var tween := create_tween().set_parallel(true)
+    tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+    tween.tween_property(result_panel, "modulate:a", 1.0, 0.28)
+    tween.tween_property(result_panel, "scale", Vector2.ONE, 0.28)
+
+func _set_local_rect(control: Control, rect: Rect2) -> void:
+    control.anchor_left = 0.0
+    control.anchor_top = 0.0
+    control.anchor_right = 0.0
+    control.anchor_bottom = 0.0
+    control.position = rect.position
+    control.size = rect.size
+
+func _place(control: Control, rect: Rect2) -> void:
+    _set_local_rect(control, rect)
+
+func _style_team_clock(clock_label: Label, active: bool, accent: Color) -> void:
+    var style := StyleBoxFlat.new()
+    style.set_corner_radius_all(9)
+    style.content_margin_left = 7.0
+    style.content_margin_right = 7.0
+    style.content_margin_top = 4.0
+    style.content_margin_bottom = 4.0
+    if active:
+        style.bg_color = Color(accent.r * 0.22, accent.g * 0.18, accent.b * 0.13, 0.92)
+        style.border_color = accent
+        style.set_border_width_all(2)
+        clock_label.modulate = Color("#FFF1D0")
+    else:
+        style.bg_color = Color(0.0, 0.0, 0.0, 0.10)
+        style.border_color = Color("#3B342A")
+        style.set_border_width_all(1)
+        clock_label.modulate = Color("#C8BAA2")
+    clock_label.add_theme_stylebox_override("normal", style)
+
+func _set_team_panel_layout(panel: Panel, title_label: Label, clock_label: Label, players: GridContainer, rect: Rect2, columns: int) -> void:
+    _place(panel, rect)
+    # El jugador no vive dentro de una tarjeta/barra: solo avatar + nombre.
+    panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+    panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    # En la partida el nombre del equipo ya se entiende por color/posición.
+    # Reservamos ese espacio para las fichas y el reloj independiente.
+    title_label.visible = false
+    var clock_w: float = 76.0 if rect.size.x >= 290.0 else 70.0
+    var clock_h: float = minf(34.0, maxf(28.0, rect.size.y - 10.0))
+    _set_local_rect(clock_label, Rect2(
+        Vector2(maxf(0.0, rect.size.x - clock_w - 6.0), (rect.size.y - clock_h) * 0.5),
+        Vector2(clock_w, clock_h)
+    ))
+    clock_label.add_theme_font_size_override("font_size", _scaled_font(15.0, 20.0))
+    players.columns = columns
+    var players_rect := Rect2(
+        Vector2(7.0, 4.0),
+        Vector2(maxf(0.0, rect.size.x - clock_w - 17.0), maxf(0.0, rect.size.y - 8.0))
+    )
+    _set_local_rect(players, players_rect)
+    var card_height: float = clampf(players_rect.size.y, 44.0, 58.0)
+    for child in players.get_children():
+        if child is Panel and child.has_method("update_state"):
+            child.custom_minimum_size = Vector2(0.0, card_height)
+
+func _default_button_width(full_text: String) -> float:
+    match full_text:
+        "Sugerir":
+            return 84.0
+        "Cambiar":
+            return 80.0
+        "Rendirse":
+            return 86.0
+        "Tablas":
+            return 72.0
+    return 64.0
+
+func _visible_button_width(button: Button) -> float:
+    return max(button.custom_minimum_size.x, 52.0)
+
+func _layout_bottom_controls(compact: bool) -> void:
+    var bottom: Control = get_node("Bottom")
+    var width := bottom.size.x
+    var gap := 6.0
+    var utility_buttons: Array[Button] = [get_node("Bottom/Emotes"), get_node("Bottom/Chat"), get_node("Bottom/GameMenu")]
+    var visible_utils: Array[Button] = []
+    for button in utility_buttons:
+        if button.visible:
+            visible_utils.append(button)
+
+    var action_buttons: Array[Button] = []
+    for child in action_row.get_children():
+        if child is Button and child.visible:
+            action_buttons.append(child)
+            if not child.has_meta("_full_text"):
+                child.set_meta("_full_text", child.text)
+
+    var is_narrow := width < 370.0
+    # Game controls use one compact row: 2c2 keeps cooperative actions at left;
+    # both modes reserve the right side for reaction, chat and the two-action menu.
+    var action_w := 0.0
+    if not action_buttons.is_empty():
+        var total_gap := gap * float(max(0, action_buttons.size() - 1))
+        action_w = minf(width * 0.52, maxf(0.0, (width - total_gap - 152.0) * 0.58))
+        action_w = maxf(0.0, action_w)
+
+    var utility_total := gap * float(max(0, visible_utils.size() - 1))
+    var utility_w_each := 0.0
+    if not visible_utils.is_empty():
+        utility_w_each = clampf((minf(178.0, width * 0.50) - utility_total) / float(visible_utils.size()), 38.0, 62.0)
+
+    var height := 58.0
+    if _mobile_scale > 1.30:
+        height = 64.0
+    bottom.size.y = height
+    _set_local_rect(action_row, Rect2(Vector2(6.0, 8.0), Vector2(maxf(0.0, width - 12.0), 42.0)))
+
+    if action_buttons.is_empty():
+        action_row.visible = false
+    else:
+        action_row.visible = true
+        var x := 0.0
+        var gaps_count := float(max(0, action_buttons.size() - 1))
+        var each_action := maxf(52.0, (maxf(100.0, width - 12.0 - utility_w_each * float(visible_utils.size()) - utility_total - gap) - gap * gaps_count) / float(action_buttons.size()))
+        each_action = minf(each_action, 92.0)
+        for b in action_buttons:
+            b.custom_minimum_size = Vector2(each_action, 42.0)
+            if is_narrow:
+                b.text = String({"Suggest": "Sug.", "Swap": "Cambio"}.get(b.name, b.get_meta("_full_text", b.text)))
+            else:
+                b.text = String(b.get_meta("_full_text", b.text))
+            b.add_theme_font_size_override("font_size", _scaled_font(13.0, 18.0))
+            _set_local_rect(b, Rect2(Vector2(x, 0.0), Vector2(each_action, 42.0)))
+            x += each_action + gap
+
+    var utility_group_width := utility_w_each * float(visible_utils.size()) + utility_total
+    var cursor := (width - utility_group_width) * 0.5 if action_buttons.is_empty() else width - 6.0
+    for button in visible_utils:
+        var bw := utility_w_each
+        if not action_buttons.is_empty():
+            cursor -= bw
+        var label: String = String(button.get_meta("_full_text", button.text))
+        match button.name:
+            "Emotes":
+                label = "🙂"
+            "Chat":
+                label = "💬"
+            "GameMenu":
+                label = "⋮"
+        button.text = String(label)
+        button.custom_minimum_size = Vector2(bw, 42.0)
+        button.add_theme_font_size_override("font_size", _scaled_font(15.0, 20.0))
+        _set_local_rect(button, Rect2(Vector2(cursor, 8.0), Vector2(bw, 42.0)))
+        cursor += bw + gap if action_buttons.is_empty() else -gap
+
+func _resize_for_viewport() -> void:
+    if not is_inside_tree():
+        return
+    _mobile_scale = _mobile_ui_scale()
+    var vp: Vector2 = get_viewport_rect().size
+    var portrait: bool = LayoutMetrics.is_portrait(vp)
+    var result_mode: bool = game != null and not game.running
+    var board_rect: Rect2 = LayoutMetrics.board_rect(vp, result_mode)
+    var board_bottom: float = board_rect.end.y
+    var is_2c2: bool = game != null and game.mode == MODE_2C2
+    var compact_portrait: bool = portrait and LayoutMetrics.is_compact_portrait(vp)
+
+    # En partida no existe una barra superior de modo/online/tiempo total.
+    # Menú y reinicio sobreviven como botones flotantes discretos.
+    get_node("Top").visible = false
+    compact_back.visible = not result_mode
+    compact_reset.visible = not result_mode
+    if not result_mode:
+        var utility_size := 38.0 if compact_portrait else 40.0
+        _set_local_rect(compact_back, Rect2(Vector2(6.0, 6.0), Vector2(utility_size, utility_size)))
+        _set_local_rect(compact_reset, Rect2(Vector2(vp.x - utility_size - 6.0, 6.0), Vector2(utility_size, utility_size)))
+        compact_back.text = "‹"
+        compact_reset.text = "↻"
+        compact_back.add_theme_font_size_override("font_size", _scaled_font(20.0, 24.0))
+        compact_reset.add_theme_font_size_override("font_size", _scaled_font(18.0, 23.0))
+    else:
+        compact_back.visible = false
+        compact_reset.visible = false
+
+    # Los textos de turno/estado dejan de competir con el tablero. El reloj
+    # activo es ahora el único indicador persistente del turno.
+    turn_label.visible = false
+    status_label.visible = false
+    selected_label.visible = false
+
+    if portrait:
+        var team_height: float = LayoutMetrics.portrait_team_header_height(vp)
+        var side_pad := 48.0
+        var panel_width := maxf(0.0, vp.x - side_pad * 2.0)
+        var top_team := Rect2(Vector2(side_pad, 4.0), Vector2(panel_width, team_height))
+        _set_team_panel_layout(black_info, black_title, black_team_clock, black_players, top_team, 2 if is_2c2 else 1)
+
+        # El tablero ocupa literalmente todo el ancho del teléfono.
+        # No se centra dentro de márgenes porque aquí el tablero manda.
+        board_rect = LayoutMetrics.board_rect(vp, result_mode)
+
+        # Movimientos: una sola línea compacta bajo el tablero.
+        var moves_h: float = 18.0 if compact_portrait else 20.0
+        _set_local_rect(moves_label, Rect2(Vector2(8.0, board_bottom + 2.0), Vector2(maxf(0.0, vp.x - 16.0), moves_h)))
+        moves_label.visible = true
+        moves_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+        moves_label.clip_text = true
+        moves_label.add_theme_font_size_override("font_size", _scaled_font(13.0, 17.0))
+
+        var bottom_team_y: float = board_bottom + moves_h + 4.0
+        var bottom_team := Rect2(Vector2(side_pad, bottom_team_y), Vector2(panel_width, team_height))
+        _set_team_panel_layout(white_info, white_title, white_team_clock, white_players, bottom_team, 2 if is_2c2 else 1)
+
+        var bottom_y := bottom_team.end.y + 3.0
+        var bottom_height := LayoutMetrics.BOTTOM_HEIGHT_COMPACT
+        _place(get_node("Bottom"), Rect2(Vector2(8.0, bottom_y), Vector2(maxf(0.0, vp.x - 16.0), bottom_height)))
+        get_node("Bottom").visible = not result_mode
+        _layout_bottom_controls(true)
+    else:
+        # En horizontal el ancho suele sobrar: el tablero usa el máximo cuadrado
+        # que permite la altura, mientras las fichas ocupan los laterales.
+        var side_height: float = LayoutMetrics.TEAM_HEADER_LANDSCAPE_HEIGHT_2C2 if is_2c2 else LayoutMetrics.TEAM_HEADER_LANDSCAPE_HEIGHT_1C1
+        var black_side: Rect2 = LayoutMetrics.landscape_side_rect(vp, false, side_height)
+        var white_side: Rect2 = LayoutMetrics.landscape_side_rect(vp, true, side_height)
+        _set_team_panel_layout(black_info, black_title, black_team_clock, black_players, black_side, 1)
+        _set_team_panel_layout(white_info, white_title, white_team_clock, white_players, white_side, 1)
+        moves_label.visible = true
+        _set_local_rect(moves_label, Rect2(Vector2(board_rect.position.x, board_bottom + 4.0), Vector2(board_rect.size.x, 22.0)))
+        moves_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+        moves_label.clip_text = true
+        moves_label.add_theme_font_size_override("font_size", _scaled_font(13.0, 17.0))
+        var bottom_rect: Rect2 = LayoutMetrics.bottom_rect(vp, board_rect, board_rect.size.x < 520.0)
+        _place(get_node("Bottom"), bottom_rect)
+        get_node("Bottom").visible = not result_mode
+        _layout_bottom_controls(bottom_rect.size.x < 520.0)
+
+    # Los elementos de partida que ya no tienen utilidad visual permanente.
+    mode_label.visible = false
+    online_status_label.visible = false
+    time_control_label.visible = false
+
+    # Paneles contextuales: en horizontal viven en la columna derecha; en vertical móvil se centran y crecen para que sean legibles.
+    var mobile_overlay := _mobile_scale > 1.30
+    var panel_w: float = minf(316.0, maxf(224.0, vp.x - 24.0))
+    var mini_h := 158.0
+    if mobile_overlay:
+        panel_w = minf(316.0, maxf(224.0, vp.x - 24.0))
+        mini_h = 176.0
+        mini_title.add_theme_font_size_override("font_size", _scaled_font(14.0, 20.0))
+        mini_body.add_theme_font_size_override("font_size", _scaled_font(14.0, 20.0))
+        mini_cooldown.add_theme_font_size_override("font_size", _scaled_font(12.0, 16.0))
+        chat_messages.add_theme_font_size_override("normal_font_size", _scaled_font(11.0, 16.0))
+        chat_input.add_theme_font_size_override("font_size", _scaled_font(13.0, 18.0))
+        get_node("ChatPanel/Title").add_theme_font_size_override("font_size", _scaled_font(14.0, 20.0))
+        history_lines.add_theme_font_size_override("normal_font_size", _scaled_font(11.0, 16.0))
+        get_node("HistoryPanel/Title").add_theme_font_size_override("font_size", _scaled_font(14.0, 20.0))
+        for close_name in ["MiniPanel/Close", "ChatPanel/Close", "HistoryPanel/Close"]:
+            var close_button: Button = get_node(close_name)
+            close_button.custom_minimum_size = Vector2(40.0, 40.0)
+            close_button.add_theme_font_size_override("font_size", _scaled_font(14.0, 20.0))
+    if portrait:
+        var x: float = (vp.x - panel_w) * 0.5 if mobile_overlay else maxf(12.0, vp.x - panel_w - 12.0)
+        # La sugerencia es un globo contextual: en vertical se coloca sobre
+        # la parte superior del tablero para no tapar la zona inferior donde
+        # suele verse la flecha origen -> destino.
+        var y: float = maxf(72.0, board_rect.position.y + 8.0)
+        mini_panel.position = Vector2(x, y)
+        mini_panel.size = Vector2(panel_w, minf(mini_h, maxf(132.0, vp.y - 84.0)))
+        # Los hijos del panel deben seguir el tamaño responsive del panel;
+        # los offsets originales eran de escritorio y comprimían el texto en
+        # teléfonos estrechos.
+        _set_local_rect(mini_title, Rect2(Vector2(12.0, 10.0), Vector2(maxf(120.0, mini_panel.size.x - 60.0), 30.0)))
+        _set_local_rect(mini_body, Rect2(Vector2(12.0, 46.0), Vector2(maxf(120.0, mini_panel.size.x - 24.0), 50.0)))
+        _set_local_rect(mini_cooldown, Rect2(Vector2(12.0, 98.0), Vector2(maxf(120.0, mini_panel.size.x - 24.0), 22.0)))
+        _set_local_rect(mini_actions, Rect2(Vector2(12.0, maxf(120.0, mini_panel.size.y - 52.0)), Vector2(maxf(120.0, mini_panel.size.x - 54.0), 44.0)))
+        _set_local_rect(get_node("MiniPanel/Close"), Rect2(Vector2(mini_panel.size.x - 44.0, 8.0), Vector2(36.0, 36.0)))
+        # El chat nunca tapa el tablero: se convierte en una hoja inferior que
+        # ocupa el espacio restante de la partida.
+        chat_panel.position = Vector2(x, board_rect.end.y + 4.0)
+        chat_panel.size = Vector2(panel_w, minf(238.0 if not mobile_overlay else 270.0, maxf(150.0, vp.y - board_rect.end.y - 8.0)))
+        _set_local_rect(chat_messages, Rect2(Vector2(12.0, 46.0), Vector2(maxf(120.0, chat_panel.size.x - 24.0), maxf(70.0, chat_panel.size.y - 96.0))))
+        _set_local_rect(chat_input, Rect2(Vector2(12.0, maxf(52.0, chat_panel.size.y - 46.0)), Vector2(maxf(120.0, chat_panel.size.x - 24.0), 34.0)))
+        history_panel.position = Vector2(x, board_rect.end.y + 4.0)
+        history_panel.size = Vector2(panel_w, minf(238.0 if not mobile_overlay else 270.0, maxf(150.0, vp.y - board_rect.end.y - 8.0)))
+    else:
+        var right_side: Rect2 = LayoutMetrics.landscape_side_rect(vp, true, LayoutMetrics.TEAM_HEADER_LANDSCAPE_HEIGHT_2C2 if is_2c2 else LayoutMetrics.TEAM_HEADER_LANDSCAPE_HEIGHT_1C1)
+        var y: float = right_side.end.y + 10.0
+        var max_h: float = maxf(0.0, vp.y - y - 10.0)
+        mini_panel.position = Vector2(right_side.position.x, y)
+        mini_panel.size = Vector2(right_side.size.x, min(190.0, max_h))
+        # En horizontal el chat aprovecha específicamente el espacio que queda
+        # debajo del jugador derecho. El tablero central no se reduce ni se tapa.
+        chat_panel.position = Vector2(right_side.position.x, y)
+        chat_panel.size = Vector2(right_side.size.x, min(330.0, max_h))
+        _set_local_rect(chat_messages, Rect2(Vector2(12.0, 46.0), Vector2(maxf(80.0, chat_panel.size.x - 24.0), maxf(60.0, chat_panel.size.y - 96.0))))
+        _set_local_rect(chat_input, Rect2(Vector2(12.0, maxf(52.0, chat_panel.size.y - 46.0)), Vector2(maxf(80.0, chat_panel.size.x - 24.0), 34.0)) )
+        history_panel.position = Vector2(right_side.position.x, y)
+        history_panel.size = Vector2(right_side.size.x, min(290.0, max_h))
+
+    if emote_picker:
+        emote_picker.resize_for_viewport(vp, board_rect)
+        if game.mode == MODE_VS_BOT:
+            emote_picker.visible = false
+
+    # Resultado: modal responsive, especialmente importante en móviles estrechos.
+    if result_panel.visible:
+        var compact_result: bool = portrait and vp.x < 420.0
+        var result_w: float
+        var result_h: float
+        if portrait:
+            result_w = maxf(280.0, vp.x - 24.0)
+            result_h = minf(174.0, maxf(166.0, vp.y - board_bottom - 10.0))
+            result_panel.position = Vector2((vp.x - result_w) * 0.5, board_bottom + 10.0)
+        else:
+            var right_side: Rect2 = LayoutMetrics.landscape_side_rect(vp, true, LayoutMetrics.TEAM_HEADER_LANDSCAPE_HEIGHT_2C2 if is_2c2 else LayoutMetrics.TEAM_HEADER_LANDSCAPE_HEIGHT_1C1)
+            result_w = right_side.size.x
+            result_h = minf(300.0, maxf(190.0, vp.y - 88.0))
+            result_panel.position = Vector2(right_side.position.x, right_side.position.y)
+        result_panel.size = Vector2(result_w, result_h)
+        result_panel.pivot_offset = result_panel.size * 0.5
+
+        var margin_x: float = 10.0 if compact_result else 14.0
+        var buttons_h: float = 40.0
+        var button_y: float = result_h - buttons_h - 10.0

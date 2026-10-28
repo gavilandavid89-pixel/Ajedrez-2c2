@@ -1,0 +1,63 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Ajedrez 2c2"
+run/main_scene="res://scenes/loading.tscn"
+config/features=PackedStringArray("4.7")
+application/boot_splash/bg_color=Color(0.055, 0.046, 0.036, 1)
+
+[autoload]
+
+App="*res://core/services/app.gd"
+StorageManager="*res://core/services/storage_manager.gd"
+PlayerData="*res://domain/player/player_data.gd"
+AudioFeedback="*res://core/services/audio_feedback.gd"
+CloudSync="*res://core/services/cloud_sync.gd"
+AuthService="*res://domain/auth/auth_service.gd"
+AccountSync="*res://domain/auth/account_sync_service.gd"
+FriendsService="*res://domain/social/friends_service.gd"
+ClubsService="*res://domain/social/clubs_service.gd"
+ClubChatService="*res://domain/social/club_chat_service.gd"
+ThemeService="*res://core/theme/theme_service.gd"
+RematchService="*res://domain/social/rematch_service.gd"
+CompetitiveTelemetry="*res://domain/competitive/competitive_telemetry_service.gd"
+SupervisorHub="*res://core/services/supervisor_hub.gd"
+MobileScrollGesture="*res://core/services/mobile_scroll_gesture.gd"
+ResponsiveContentScale="*res://core/layout/responsive_content_scale.gd"
+BoardVisualEvents="*res://core/visual/board_visual_events.gd"
+GlobalEvents="*res://core/events/global_events.gd"
+MatchEvents="*res://core/events/match_events.gd"
+MatchContext="*res://core/context/match_context_service.gd"
+
+[display]
+
+window/size/viewport_width=390
+window/size/viewport_height=844
+window/size/window_width_override=390
+window/size/window_height_override=844
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=6
+
+[environment]
+
+defaults/default_clear_color=Color(0.055, 0.046, 0.036, 1)
+
+[gui]
+
+theme/default_font_multichannel_signed_distance_field=true
+theme/custom="res://assets/ui_theme.tres"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

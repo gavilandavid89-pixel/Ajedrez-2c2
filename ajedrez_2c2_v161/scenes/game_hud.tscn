@@ -1,0 +1,685 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://ui/screens/game_hud.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/emote_picker.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/game_action_menu.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/game_chat_panel.tscn" id="4"]
+
+[sub_resource type="StyleBoxFlat" id="panel"]
+bg_color = Color(0.101, 0.085, 0.068, 0.97)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.27, 0.22, 0.17, 1)
+
+[sub_resource type="StyleBoxFlat" id="panel_soft"]
+bg_color = Color(0.13, 0.11, 0.085, 0.98)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.34, 0.28, 0.21, 1)
+
+[sub_resource type="StyleBoxFlat" id="topbar"]
+bg_color = Color(0.075, 0.064, 0.052, 0.97)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.23, 0.19, 0.15, 1)
+
+[sub_resource type="StyleBoxFlat" id="button"]
+bg_color = Color(0.15, 0.13, 0.105, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.29, 0.25, 0.20, 1)
+
+[sub_resource type="StyleBoxFlat" id="button_hover"]
+bg_color = Color(0.21, 0.17, 0.12, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.72, 0.55, 0.24, 0.9)
+
+[sub_resource type="StyleBoxFlat" id="field"]
+bg_color = Color(0.10, 0.085, 0.068, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.23, 0.18, 1)
+
+[sub_resource type="StyleBoxFlat" id="result"]
+bg_color = Color(0.08, 0.066, 0.052, 0.99)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.79, 0.58, 0.25, 0.9)
+
+[sub_resource type="StyleBoxFlat" id="chip"]
+bg_color = Color(0.18, 0.15, 0.11, 0.95)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="mini"]
+bg_color = Color(0.095, 0.08, 0.064, 0.985)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.42, 0.33, 0.22, 1)
+
+[sub_resource type="StyleBoxFlat" id="team_header"]
+bg_color = Color(0.075, 0.063, 0.051, 0.96)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.20, 0.16, 1)
+
+[node name="HUD" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1")
+
+[node name="CompactBack" type="Button" parent="."]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = 46.0
+offset_bottom = 46.0
+mouse_filter = 0
+focus_mode = 0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "‹"
+visible = false
+
+[node name="CompactReset" type="Button" parent="."]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -46.0
+offset_top = 6.0
+offset_right = -6.0
+offset_bottom = 46.0
+mouse_filter = 0
+focus_mode = 0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "↻"
+visible = false
+
+[node name="FinishedResultButton" type="Button" parent="."]
+custom_minimum_size = Vector2(110, 42)
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -122.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 50.0
+mouse_filter = 0
+focus_mode = 0
+visible = false
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "🏆 Resultado"
+
+[node name="Top" type="Panel" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 10.0
+offset_right = -12.0
+offset_bottom = 66.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("topbar")
+
+[node name="Mode" type="Label" parent="Top"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 12.0
+offset_right = 410.0
+offset_bottom = 40.0
+theme_override_colors/font_color = Color(0.93, 0.86, 0.72, 1)
+theme_override_font_sizes/font_size = 16
+text = "AJEDREZ 2c2 · COOPERATIVO"
+
+[node name="Back" type="Button" parent="Top"]
+custom_minimum_size = Vector2(76, 40)
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -166.0
+offset_top = 8.0
+offset_right = -90.0
+offset_bottom = 48.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Menú"
+
+[node name="Reset" type="Button" parent="Top"]
+custom_minimum_size = Vector2(82, 40)
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -82.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 48.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Reiniciar"
+
+
+[node name="TimeControl" type="Label" parent="Top"]
+layout_mode = 0
+offset_left = 520.0
+offset_top = 18.0
+offset_right = 556.0
+offset_bottom = 38.0
+theme_override_colors/font_color = Color(0.82, 0.74, 0.62, 1)
+theme_override_font_sizes/font_size = 14
+text = "10'"
+horizontal_alignment = 2
+vertical_alignment = 1
+mouse_filter = 2
+visible = false
+
+[node name="OnlineStatus" type="Label" parent="Top"]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -104.0
+offset_top = 18.0
+offset_right = -12.0
+offset_bottom = 38.0
+theme_override_colors/font_color = Color(0.42, 0.67, 0.45, 1)
+theme_override_font_sizes/font_size = 14
+text = "● EN LÍNEA"
+horizontal_alignment = 2
+vertical_alignment = 1
+mouse_filter = 2
+visible = false
+
+[node name="BlackInfo" type="Panel" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 76.0
+offset_right = -12.0
+offset_bottom = 154.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("team_header")
+
+[node name="Title" type="Label" parent="BlackInfo"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 4.0
+offset_right = 140.0
+offset_bottom = 20.0
+theme_override_colors/font_color = Color(0.65, 0.35, 0.28, 1)
+theme_override_font_sizes/font_size = 13
+text = "Equipo Negro"
+
+[node name="TeamClock" type="Label" parent="BlackInfo"]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -82.0
+offset_top = 2.0
+offset_right = -10.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0.90, 0.83, 0.68, 1)
+theme_override_font_sizes/font_size = 18
+text = "10:00"
+horizontal_alignment = 2
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="Players" type="GridContainer" parent="BlackInfo"]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 116.0
+offset_top = 18.0
+offset_right = -8.0
+offset_bottom = 76.0
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
+mouse_filter = 2
+
+[node name="Turn" type="Label" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 139.0
+offset_right = -12.0
+offset_bottom = 154.0
+theme_override_colors/font_color = Color(0.84, 0.68, 0.38, 1)
+theme_override_font_sizes/font_size = 14
+text = "Turno A · NEGRAS · Rival"
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="Selected" type="Label" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 154.0
+offset_right = -12.0
+offset_bottom = 174.0
+theme_override_colors/font_color = Color(0.60, 0.55, 0.48, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="WhiteInfo" type="Panel" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 888.0
+offset_right = -12.0
+offset_bottom = 966.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("team_header")
+
+[node name="Title" type="Label" parent="WhiteInfo"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 4.0
+offset_right = 140.0
+offset_bottom = 20.0
+theme_override_colors/font_color = Color(0.83, 0.63, 0.23, 1)
+theme_override_font_sizes/font_size = 13
+text = "Equipo Blanco"
+
+[node name="TeamClock" type="Label" parent="WhiteInfo"]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -82.0
+offset_top = 2.0
+offset_right = -10.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0.90, 0.83, 0.68, 1)
+theme_override_font_sizes/font_size = 18
+text = "10:00"
+horizontal_alignment = 2
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="Players" type="GridContainer" parent="WhiteInfo"]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 116.0
+offset_top = 18.0
+offset_right = -8.0
+offset_bottom = 76.0
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
+mouse_filter = 2
+
+[node name="Moves" type="Label" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 962.0
+offset_right = -12.0
+offset_bottom = 990.0
+theme_override_colors/font_color = Color(0.60, 0.55, 0.48, 1)
+theme_override_font_sizes/font_size = 13
+text = "Historial · Sin movimientos"
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="Status" type="Label" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 990.0
+offset_right = -12.0
+offset_bottom = 1014.0
+theme_override_colors/font_color = Color(0.84, 0.68, 0.38, 1)
+theme_override_font_sizes/font_size = 14
+text = "Turno de las blancas"
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="Bottom" type="Panel" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 1018.0
+offset_right = -12.0
+offset_bottom = 1076.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("panel")
+
+[node name="Actions" type="HBoxContainer" parent="Bottom"]
+layout_mode = 0
+anchor_right = 1.0
+offset_left = 6.0
+offset_top = 8.0
+offset_right = -6.0
+offset_bottom = 50.0
+theme_override_constants/separation = 5
+mouse_filter = 1
+
+[node name="Suggest" type="Button" parent="Bottom/Actions"]
+custom_minimum_size = Vector2(76, 40)
+layout_mode = 2
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Sugerir"
+metadata/_action = "suggest"
+
+[node name="Swap" type="Button" parent="Bottom/Actions"]
+custom_minimum_size = Vector2(72, 40)
+layout_mode = 2
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Cambiar"
+metadata/_action = "swap"
+
+[node name="Surrender" type="Button" parent="Bottom/Actions"]
+visible = false
+custom_minimum_size = Vector2(78, 40)
+layout_mode = 2
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Rendirse"
+metadata/_action = "surrender"
+
+[node name="Draw" type="Button" parent="Bottom/Actions"]
+visible = false
+custom_minimum_size = Vector2(64, 40)
+layout_mode = 2
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Tablas"
+metadata/_action = "draw"
+
+[node name="History" type="Button" parent="Bottom"]
+visible = false
+custom_minimum_size = Vector2(86, 40)
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -180.0
+offset_top = 8.0
+offset_right = -94.0
+offset_bottom = 48.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Historial"
+
+
+[node name="Emotes" type="Button" parent="Bottom"]
+custom_minimum_size = Vector2(48, 40)
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -238.0
+offset_top = 8.0
+offset_right = -186.0
+offset_bottom = 48.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "🙂"
+tooltip_text = "Emotes rápidos"
+
+[node name="Chat" type="Button" parent="Bottom"]
+custom_minimum_size = Vector2(78, 40)
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -88.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 48.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Chat"
+
+[node name="GameMenu" type="Button" parent="Bottom"]
+custom_minimum_size = Vector2(52, 40)
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -52.0
+offset_top = 8.0
+offset_right = 0.0
+offset_bottom = 48.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "⋮"
+tooltip_text = "Opciones de partida"
+
+[node name="EmotePicker" parent="." instance=ExtResource("2")]
+visible = false
+
+[node name="GameActionMenu" parent="." instance=ExtResource("3")]
+visible = false
+
+[node name="MiniPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 380.0
+offset_top = 190.0
+offset_right = 708.0
+offset_bottom = 364.0
+mouse_filter = 1
+theme_override_styles/panel = SubResource("mini")
+
+[node name="Title" type="Label" parent="MiniPanel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 250.0
+offset_bottom = 34.0
+theme_override_colors/font_color = Color(0.92, 0.83, 0.66, 1)
+theme_override_font_sizes/font_size = 14
+text = "Sugerencia"
+
+[node name="Body" type="Label" parent="MiniPanel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 42.0
+offset_right = -12.0
+offset_bottom = 90.0
+theme_override_colors/font_color = Color(0.84, 0.79, 0.70, 1)
+theme_override_font_sizes/font_size = 14
+text = ""
+autowrap_mode = 2
+
+[node name="Cooldown" type="Label" parent="MiniPanel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 98.0
+offset_right = -12.0
+offset_bottom = 118.0
+theme_override_colors/font_color = Color(0.57, 0.52, 0.44, 1)
+theme_override_font_sizes/font_size = 14
+text = ""
+
+[node name="Actions" type="HBoxContainer" parent="MiniPanel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 128.0
+offset_right = -44.0
+offset_bottom = 166.0
+theme_override_constants/separation = 6
+
+[node name="Close" type="Button" parent="MiniPanel"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -36.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 36.0
+theme_override_styles/normal = SubResource("button")
+text = "×"
+
+[node name="ChatPanel" parent="." instance=ExtResource("4")]
+visible = false
+
+[node name="HistoryPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 380.0
+offset_top = 190.0
+offset_right = 708.0
+offset_bottom = 450.0
+mouse_filter = 1
+theme_override_styles/panel = SubResource("mini")
+
+[node name="Title" type="Label" parent="HistoryPanel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 230.0
+offset_bottom = 34.0
+theme_override_colors/font_color = Color(0.92, 0.83, 0.66, 1)
+theme_override_font_sizes/font_size = 14
+text = "Historial"
+
+[node name="Close" type="Button" parent="HistoryPanel"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -36.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 36.0
+theme_override_styles/normal = SubResource("button")
+text = "×"
+
+[node name="Lines" type="RichTextLabel" parent="HistoryPanel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 46.0
+offset_right = -12.0
+offset_bottom = 242.0
+theme_override_colors/default_color = Color(0.79, 0.75, 0.67, 1)
+theme_override_font_sizes/normal_font_size = 11
+text = "Todavía no hay movimientos."
+scroll_active = true
+
+[node name="Result" type="Panel" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 150.0
+offset_top = 450.0
+offset_right = 570.0
+offset_bottom = 730.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme_override_styles/panel = SubResource("result")
+
+[node name="Label" type="Label" parent="Result"]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 18.0
+offset_right = -18.0
+offset_bottom = 150.0
+theme_override_colors/font_color = Color(0.95, 0.91, 0.82, 1)
+theme_override_font_sizes/font_size = 20
+text = "FIN"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+
+[node name="Analyze" type="Button" parent="Result"]
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 0
+offset_left = 20.0
+offset_top = 194.0
+offset_right = 140.0
+offset_bottom = 234.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Analizar"
+
+[node name="Rematch" type="Button" parent="Result"]
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 0
+offset_left = 150.0
+offset_top = 194.0
+offset_right = 270.0
+offset_bottom = 234.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Revancha"
+
+[node name="ToMenu" type="Button" parent="Result"]
+custom_minimum_size = Vector2(180, 44)
+layout_mode = 0
+offset_left = 280.0
+offset_top = 194.0
+offset_right = -20.0
+offset_bottom = 234.0
+theme_override_styles/normal = SubResource("button")
+theme_override_styles/hover = SubResource("button_hover")
+text = "Menú"
+visible = false

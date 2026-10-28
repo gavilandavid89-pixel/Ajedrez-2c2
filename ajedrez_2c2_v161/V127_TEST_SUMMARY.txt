@@ -1,0 +1,19 @@
+Godot 4.7.2 — V127 QA summary
+V127 integration 15/15
+V126 screenshot agent 8/8
+V125 board/piece agent 7/7
+V124 mini-agents 12/12
+V123 match supervisor 22/22
+V122 grace countdown 25/25
+V121 match/view session 17/17
+V120 turn/reconnect/result 16/16
+V119 transition races 29/29
+V118 delegation integration 22/22
+V117 team-control delegation 32/32
+V116 disconnect policy 18/18
+V115 result idempotency 6/6
+V114 transitions 13/13
+V103 responsive orientation 42/42
+V102 portrait board layout 54/54
+Import: exit 0; no SCRIPT ERROR, Parse Error, or ERROR in import log.
+Graphical runtime (Xvfb, dummy audio): alive for 15-second observation window; no script errors or ERROR lines. Environment warnings: V-Sync unavailable and root execution.

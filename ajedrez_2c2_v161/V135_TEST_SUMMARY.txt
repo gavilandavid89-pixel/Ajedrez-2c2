@@ -1,0 +1,7 @@
+Ajedrez 2c2 — V135
+Auditoría estática externa (Python): 13/13 comprobaciones pasaron.
+Referencias res:// rotas: 0.
+Rutas externas rotas en escenas/recursos: 0.
+Suite tests/v135_system_audit_tests.gd: 14 aserciones añadidas, PENDIENTES DE EJECUCIÓN EN GODOT.
+Godot 4.7.2 parser/import: PENDIENTE (ejecutable no disponible en este entorno).
+Prueba visual Android: PENDIENTE.

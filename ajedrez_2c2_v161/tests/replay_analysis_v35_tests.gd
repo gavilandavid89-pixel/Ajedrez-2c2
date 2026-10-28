@@ -1,0 +1,54 @@
+extends SceneTree
+
+const AccountScene := preload("res://scenes/account_hub.tscn")
+const GameState := preload("res://domain/chess/game_state.gd")
+const ReplayViewScript := preload("res://domain/replay/match_replay_view.gd")
+
+func _initialize() -> void:
+    DisplayServer.window_set_size(Vector2i(390, 844))
+    var data = root.get_node_or_null("PlayerData")
+    if data == null:
+        quit(1)
+        return
+    await process_frame
+    data.history.clear()
+    var game := GameState.new()
+    game.reset_match(GameState.MODE_1C1_LOCAL)
+    game.attempt_move(Vector2i(4,6), Vector2i(4,4))
+    game.attempt_move(Vector2i(4,1), Vector2i(4,3))
+    game.attempt_move(Vector2i(6,7), Vector2i(5,5))
+    game.attempt_move(Vector2i(1,0), Vector2i(2,2))
+    data.record_noncompetitive_match({"match_id":"V35_SELECTED","mode":GameState.MODE_1C1_LOCAL,"outcome":"win","move_count":4,"moves":game.replay_moves(),"replay_data":game.replay_data(),"rating_delta":15,"rating_after":1015,"cup_delta":1,"cups_after":11})
+    game.queue_free()
+    var scene := AccountScene.instantiate()
+    root.add_child(scene)
+    await process_frame
+    await process_frame
+    scene.selected_history_index = data.history.size() - 1
+    scene.page = "analysis"
+    scene._refresh()
+    await process_frame
+    await process_frame
+    var views := _find_replay_views(scene)
+    if not views.is_empty():
+        views[0].set_replay_position(2)
+    await process_frame
+    _check(not views.is_empty(), "Analysis instantiates interactive review view")
+    if not views.is_empty():
+        _check(views[0]._index == 2, "Analysis review can jump directly to a selected move")
+        _check(String(views[0]._move_label.text).contains("e7") and String(views[0]._move_label.text).contains("e5"), "Selected move label follows the chosen position")
+    quit()
+
+func _check(value: bool, label: String) -> void:
+    if value:
+        print("[OK] " + label)
+    else:
+        push_error("[FALLA] " + label)
+
+func _find_replay_views(node: Node) -> Array[MatchReplayView]:
+    var found: Array[MatchReplayView] = []
+    for child in node.get_children():
+        if child is MatchReplayView:
+            found.append(child)
+        found.append_array(_find_replay_views(child))
+    return found
