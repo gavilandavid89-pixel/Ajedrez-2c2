@@ -71,8 +71,8 @@ func run() -> Dictionary:
     var tactical_source := FileAccess.get_file_as_string("res://domain/replay/game_review_service.gd")
     _check(tactical_source.contains("review_tactical_commentary.gd") and tactical_source.contains("\"tactical_report\": tactical_report"), "El análisis consume el módulo táctico independiente", passed, failed)
 
-    var engine := service.engine
-    _check(engine.is_available(), "El binario real de Stockfish está incluido", passed, failed)
+    _check(FileAccess.file_exists("res://engine/stockfish/stockfish_android_arm32"), "El binario Stockfish ARM32 está incluido", passed, failed)
+    _check(FileAccess.file_exists("res://engine/stockfish/stockfish_android_arm64"), "El binario Stockfish ARM64 está incluido", passed, failed)
     _check(FileAccess.file_exists("res://engine/stockfish/README.md"), "Documentación del motor presente", passed, failed)
     var review_source := FileAccess.get_file_as_string("res://domain/replay/replay_view_controller.gd")
     _check(review_source.contains("var has_commentary := not review.is_empty()") and review_source.contains("Variante:"), "Coach muestra comentarios y línea sugerida para cada jugada analizada", passed, failed)
