@@ -25,10 +25,16 @@ jobs:
           curl --fail --location --retry 3 "$url" -o /tmp/stockfish-armv7.tar.gz
           mkdir -p /tmp/stockfish-armv7
           tar -xzf /tmp/stockfish-armv7.tar.gz -C /tmp/stockfish-armv7
-          candidate="$(find /tmp/stockfish-armv7 -type f -name stockfish -print -quit)"
+          candidate=""
+          while IFS= read -r candidate_file; do
+            if file "$candidate_file" | grep -q 'ELF 32-bit.*ARM'; then
+              candidate="$candidate_file"
+              break
+            fi
+          done < <(find /tmp/stockfish-armv7 -type f -size +1M -print)
           if [ -z "$candidate" ]; then
-            echo "No se encontró el ejecutable stockfish dentro del paquete oficial."
-            tar -tzf /tmp/stockfish-armv7.tar.gz | head -80
+            echo "El paquete oficial no contiene un ejecutable ELF32 ARM reconocible."
+            find /tmp/stockfish-armv7 -type f -size +1M -exec file {} \;
             exit 1
           fi
           file "$candidate"
