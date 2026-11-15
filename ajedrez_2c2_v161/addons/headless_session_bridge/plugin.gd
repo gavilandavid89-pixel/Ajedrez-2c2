@@ -229,6 +229,10 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var editor_settings_result := _inspect_editor_settings()
 			response["ok"] = bool(editor_settings_result.get("ok", false))
 			response["result"] = editor_settings_result
+		"inspect_resource":
+			var resource_result := _inspect_project_resource(request.get("args", {}))
+			response["ok"] = bool(resource_result.get("ok", false))
+			response["result"] = resource_result
 		"list_project_resources":
 			var resources_result := _list_project_resources()
 			response["ok"] = bool(resources_result.get("ok", false))
@@ -294,6 +298,27 @@ const ALLOWED_NODE_TYPES := [
 ]
 const MAX_INSPECTED_NODES := 200
 const MAX_RESOURCE_ENTRIES := 300
+
+
+func _inspect_project_resource(raw_args: Variant) -> Dictionary:
+	if not raw_args is Dictionary:
+		return {"ok": false, "error": "invalid_arguments"}
+	var resource_path := str(raw_args.get("path", ""))
+	if not resource_path.begins_with("res://") or resource_path.contains("..") or resource_path.contains("\\"):
+		return {"ok": false, "error": "invalid_resource_path"}
+	if not ResourceLoader.exists(resource_path):
+		return {"ok": false, "error": "resource_not_found", "path": resource_path}
+	var resource: Resource = ResourceLoader.load(resource_path)
+	if resource == null:
+		return {"ok": false, "error": "resource_load_failed", "path": resource_path}
+	return {
+		"ok": true,
+		"path": resource_path,
+		"type": resource.get_class(),
+		"resource_name": resource.resource_name,
+		"resource_local_to_scene": resource.resource_local_to_scene,
+		"inspector": _inspect_object_inspector(resource)
+	}
 
 
 const MAX_PROJECT_SETTINGS := 250
