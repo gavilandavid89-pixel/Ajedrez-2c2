@@ -1,0 +1,1 @@
+Calibration artifact for the fresh Godot Project Manager GUI test.
