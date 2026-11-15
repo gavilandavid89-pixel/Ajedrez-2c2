@@ -33,7 +33,7 @@ godot --headless --path . --script res://tools/headless_bridge/bridge_probe.gd -
 
 Commands are explicitly allowlisted: `ping`, `show_test_marker`,
 `clear_test_marker`, `open_scene`, `inspect_scene`, `list_project_resources`,
-`add_node` and `set_node_properties`. `open_scene` accepts a JSON object such as
+`add_node`, `set_node_properties` and `configure_collision_shape`. `open_scene` accepts a JSON object such as
 `{"path":"res://scenes/loading.tscn"}` and only permits `.tscn` files beneath
 `res://scenes/`. The inspection commands return a bounded scene-tree snapshot
 (maximum 200 nodes, depth 8) and a bounded project-resource inventory (maximum
@@ -56,9 +56,11 @@ currently edited scene through the editor undo manager, and does not save the
 scene automatically. `set_node_properties` applies a bounded typed allowlist to
 scene-relative node paths (2D transforms, collision layers/masks, Area2D flags,
 CharacterBody2D movement configuration, ray/shape-cast settings, and collision
-shape flags). Values are validated before any edit is committed; changes are
-recorded as one editor undo action. Arbitrary properties, object references,
-scripts, and resource mutation are not accepted. The user can inspect and undo
+shape flags). `configure_collision_shape` creates only Circle, Rectangle, Capsule,
+or Segment shape resources with validated dimensions and assigns them through
+one undoable editor action. Values are validated before any edit is committed;
+changes are recorded in the editor undo history. Arbitrary properties, object
+references, scripts, and unrestricted resource mutation are not accepted. The user can inspect and undo
 changes in the editor. Requests are JSON lines containing the protocol version,
 project fingerprint and random session token. No arbitrary GDScript, shell
 commands, file writes, or eval payloads are accepted.
