@@ -169,6 +169,7 @@ jobs:
           grep -q '"frames":' artifacts/editor-video-stop.json
           grep -q '"file_size":' artifacts/editor-video-stop.json
           video_path=$(python3 -c 'import json; print(json.load(open("artifacts/editor-video-stop.json"))["result"]["video_path"])')
+          cp "$video_path" artifacts/real-editor-session.mp4
           ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1 "$video_path" | tee artifacts/editor-video-probe.txt
           grep -q 'codec_name=h264' artifacts/editor-video-probe.txt
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- get_editor_video_status | tee artifacts/editor-video-status.json
