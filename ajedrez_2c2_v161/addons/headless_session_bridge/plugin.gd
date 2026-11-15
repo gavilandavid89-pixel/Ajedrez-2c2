@@ -248,6 +248,10 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var focus_result := _focus_inspector(request.get("args", {}))
 			response["ok"] = bool(focus_result.get("ok", false))
 			response["result"] = focus_result
+		"inspect_undo_history":
+			var undo_result := _inspect_undo_history()
+			response["ok"] = bool(undo_result.get("ok", false))
+			response["result"] = undo_result
 		"inspect_project_settings":
 			var settings_result := _inspect_project_settings()
 			response["ok"] = bool(settings_result.get("ok", false))
@@ -436,6 +440,29 @@ func _inspect_editor_settings() -> Dictionary:
 		"truncated": truncated,
 		"scope": EDITOR_SETTING_PREFIXES,
 		"warning": "These preferences belong to the editor installation, not the project."
+	}
+
+
+func _inspect_undo_history() -> Dictionary:
+	var root := EditorInterface.get_edited_scene_root()
+	if root == null:
+		return {"ok": false, "error": "no_edited_scene"}
+	var manager := EditorInterface.get_editor_undo_redo()
+	if manager == null:
+		return {"ok": false, "error": "undo_manager_unavailable"}
+	var history_id := manager.get_object_history_id(root)
+	var history: UndoRedo = manager.get_history_undo_redo(history_id)
+	if history == null:
+		return {"ok": false, "error": "scene_undo_history_unavailable"}
+	return {
+		"ok": true,
+		"history_id": history_id,
+		"history_count": history.get_history_count(),
+		"has_undo": history.has_undo(),
+		"has_redo": history.has_redo(),
+		"current_action": history.get_current_action(),
+		"current_action_name": history.get_current_action_name(),
+		"version": history.get_version()
 	}
 
 
