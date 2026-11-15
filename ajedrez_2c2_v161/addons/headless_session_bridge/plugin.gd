@@ -936,7 +936,9 @@ func _create_sprite_frames(raw_args: Variant) -> Dictionary:
 		return {"ok": false, "error": "resource_already_exists", "path": resource_path}
 	var directory_path := ProjectSettings.globalize_path(resource_path).get_base_dir()
 	if not DirAccess.dir_exists_absolute(directory_path):
-		return {"ok": false, "error": "resource_directory_not_found"}
+		var directory_error := DirAccess.make_dir_recursive_absolute(directory_path)
+		if directory_error != OK and not DirAccess.dir_exists_absolute(directory_path):
+			return {"ok": false, "error": "resource_directory_create_failed", "code": directory_error}
 	var raw_animations: Variant = args.get("animations", [])
 	if not raw_animations is Array or raw_animations.is_empty() or raw_animations.size() > 32:
 		return {"ok": false, "error": "animations_required_or_limit_exceeded"}
