@@ -1,0 +1,1 @@
+Fresh-project Project Manager GUI automation iteration.
