@@ -140,9 +140,8 @@ jobs:
           xdotool type --clearmodifiers "Node"
           sleep 2
           import -window root -silent "$GITHUB_WORKSPACE/artifacts/create-root-node-dialog.png"
-          xdotool mousemove --sync 560 264 click 1
-          sleep 1
-          xdotool mousemove --sync 927 791 click 1
+          # The Node result is already highlighted; Enter creates the root node.
+          xdotool key Return
           sleep 4
           import -window root -silent "$GITHUB_WORKSPACE/artifacts/editor-with-root-node.png"
           # Open the native Save Scene dialog for the next calibration pass.
