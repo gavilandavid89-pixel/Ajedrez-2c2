@@ -74,9 +74,11 @@ jobs:
           xdotool type --clearmodifiers "$PROJECT"
           sleep 1
           import -window root -silent "$GITHUB_WORKSPACE/artifacts/project-manager-filled-dialog.png"
-          # Edit Now remains enabled; Create launches the project in Godot Editor.
-          xdotool mousemove --sync 871 710 click 1
-          sleep 8
+          # Move keyboard focus from Project Path through Browse, renderer, metadata, Edit Now and Cancel to Create.
+          for _ in 1 2 3 4 5 6; do xdotool key Tab; done
+          import -window root -silent "$GITHUB_WORKSPACE/artifacts/project-manager-create-focused.png"
+          xdotool key Return
+          sleep 10
           if [ ! -f "$PROJECT/project.godot" ]; then
             import -window root -silent "$GITHUB_WORKSPACE/artifacts/project-manager-create-failed.png" || true
             cat /tmp/godot-project-manager.log
