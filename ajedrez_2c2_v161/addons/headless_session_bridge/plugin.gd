@@ -225,6 +225,10 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var result := _add_node_to_edited_scene(request.get("args", {}))
 			response["ok"] = bool(result.get("ok", false))
 			response["result"] = result
+		"set_node_properties":
+			var result := _set_node_properties(request.get("args", {}))
+			response["ok"] = bool(result.get("ok", false))
+			response["result"] = result
 		_:
 			response = {"ok": false, "error": "command_not_allowed"}
 	_send_response(peer, response)
@@ -460,6 +464,91 @@ func _add_node_to_edited_scene(raw_args: Variant) -> Dictionary:
 	undo_redo.commit_action()
 	return {"ok": true, "node_path": str(root.get_path_to(new_node)), "type": type_name, "name": node_name}
 
+
+
+const NODE_PROPERTY_ALLOWLIST := {
+	"Node2D": ["position", "rotation_degrees", "scale", "z_index", "visible"],
+	"CollisionObject2D": ["collision_layer", "collision_mask", "input_pickable"],
+	"Area2D": ["monitoring", "monitorable"],
+	"CharacterBody2D": ["up_direction", "motion_mode", "floor_max_angle"],
+	"RayCast2D": ["enabled", "target_position", "collide_with_areas", "collide_with_bodies"],
+	"ShapeCast2D": ["enabled", "target_position", "collide_with_areas", "collide_with_bodies"],
+	"CollisionShape2D": ["disabled", "one_way_collision"],
+	"CollisionPolygon2D": ["disabled"]
+}
+
+
+func _set_node_properties(raw_args: Variant) -> Dictionary:
+	if not raw_args is Dictionary:
+		return {"ok": false, "error": "invalid_args"}
+	var args: Dictionary = raw_args
+	var root := EditorInterface.get_edited_scene_root()
+	if root == null:
+		return {"ok": false, "error": "no_edited_scene"}
+	var node_path := str(args.get("node_path", ""))
+	if node_path.begins_with("/") or node_path == ".." or node_path.contains("../") or node_path.contains("/.."):
+		return {"ok": false, "error": "invalid_node_path"}
+	var node: Node = root if node_path.is_empty() or node_path == "." else root.get_node_or_null(NodePath(node_path))
+	if node == null:
+		return {"ok": false, "error": "node_not_found"}
+	var raw_properties: Variant = args.get("properties", {})
+	if not raw_properties is Dictionary or raw_properties.is_empty():
+		return {"ok": false, "error": "properties_required"}
+	var allowed: Array = []
+	for class_name in NODE_PROPERTY_ALLOWLIST:
+		if node.is_class(class_name):
+			allowed.append_array(NODE_PROPERTY_ALLOWLIST[class_name])
+	var changes: Dictionary = {}
+	for property_name in raw_properties:
+		var key := str(property_name)
+		if key not in allowed:
+			return {"ok": false, "error": "property_not_allowed", "property": key}
+		var parsed := _validate_node_property(node, key, raw_properties[property_name])
+		if not bool(parsed.get("ok", false)):
+			return parsed
+		changes[key] = parsed["value"]
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Headless Bridge: Configure " + str(node.name))
+	for key in changes:
+		undo_redo.add_do_property(node, key, changes[key])
+		undo_redo.add_undo_property(node, key, node.get(key))
+	undo_redo.commit_action()
+	return {"ok": true, "node_path": str(root.get_path_to(node)), "changed_properties": changes}
+
+
+func _validate_node_property(node: Node, key: String, raw_value: Variant) -> Dictionary:
+	if key in ["position", "scale", "up_direction", "target_position"]:
+		if not raw_value is Dictionary or not raw_value.has("x") or not raw_value.has("y"):
+			return {"ok": false, "error": "vector2_expected", "property": key}
+		var x := float(raw_value["x"])
+		var y := float(raw_value["y"])
+		if not is_finite(x) or not is_finite(y) or absf(x) > 1000000.0 or absf(y) > 1000000.0:
+			return {"ok": false, "error": "vector2_out_of_range", "property": key}
+		return {"ok": true, "value": Vector2(x, y)}
+	if key in ["rotation_degrees", "floor_max_angle"]:
+		if not (raw_value is int or raw_value is float):
+			return {"ok": false, "error": "number_expected", "property": key}
+		var number := float(raw_value)
+		if not is_finite(number) or absf(number) > 360000.0:
+			return {"ok": false, "error": "number_out_of_range", "property": key}
+		return {"ok": true, "value": number}
+	if key in ["collision_layer", "collision_mask"]:
+		if not raw_value is int or int(raw_value) < 0 or int(raw_value) > 4294967295:
+			return {"ok": false, "error": "unsigned_32bit_integer_expected", "property": key}
+		return {"ok": true, "value": int(raw_value)}
+	if key == "z_index":
+		if not raw_value is int or int(raw_value) < -4096 or int(raw_value) > 4096:
+			return {"ok": false, "error": "integer_out_of_range", "property": key}
+		return {"ok": true, "value": int(raw_value)}
+	if key == "motion_mode":
+		if not raw_value is int or int(raw_value) not in [0, 1]:
+			return {"ok": false, "error": "invalid_motion_mode", "property": key}
+		return {"ok": true, "value": int(raw_value)}
+	if key in ["visible", "input_pickable", "monitoring", "monitorable", "enabled", "collide_with_areas", "collide_with_bodies", "disabled", "one_way_collision"]:
+		if not raw_value is bool:
+			return {"ok": false, "error": "boolean_expected", "property": key}
+		return {"ok": true, "value": raw_value}
+	return {"ok": false, "error": "unsupported_property", "property": key}
 
 
 func _open_project_scene(raw_args: Variant) -> Dictionary:
