@@ -1,0 +1,1 @@
+Test Project Manager keyboard shortcut for opening New Project dialog.
