@@ -488,6 +488,7 @@ func _focus_inspector(raw_args: Variant) -> Dictionary:
 			break
 		current = current.get_parent()
 	var base_control := EditorInterface.get_base_control()
+	var inspector_window := inspector.get_window()
 	return {
 		"ok": true,
 		"node_path": str(root.get_path_to(node)),
@@ -495,6 +496,11 @@ func _focus_inspector(raw_args: Variant) -> Dictionary:
 		"main_screen": main_screen,
 		"distraction_free_mode": EditorInterface.distraction_free_mode,
 		"base_size": {"x": base_control.size.x, "y": base_control.size.y},
+		"multi_window_enabled": EditorInterface.is_multi_window_enabled(),
+		"inspector_window_title": inspector_window.title,
+		"inspector_window_visible": inspector_window.visible,
+		"inspector_window_position": {"x": inspector_window.position.x, "y": inspector_window.position.y},
+		"inspector_window_size": {"x": inspector_window.size.x, "y": inspector_window.size.y},
 		"inspector_visible": inspector.is_visible_in_tree(),
 		"inspector_size": {"x": inspector.size.x, "y": inspector.size.y},
 		"inspector_dock": dock_name,
