@@ -1,0 +1,1 @@
+Trigger native main.tscn save and full bridge verification.
