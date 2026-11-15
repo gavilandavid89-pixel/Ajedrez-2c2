@@ -470,21 +470,37 @@ func _focus_inspector(raw_args: Variant) -> Dictionary:
 	var current: Node = inspector
 	var dock_name := ""
 	var dock_visible := false
+	var dock_size := Vector2.ZERO
+	var ancestors: Array[Dictionary] = []
 	while current != null:
+		var ancestor := {"name": str(current.name), "type": current.get_class()}
+		if current is Control:
+			ancestor["visible"] = current.visible
+			ancestor["visible_in_tree"] = current.is_visible_in_tree()
+			ancestor["size"] = {"x": current.size.x, "y": current.size.y}
+		ancestors.append(ancestor)
 		if current.has_method("make_visible"):
 			current.call("make_visible")
 			dock_name = str(current.name)
 			dock_visible = current.is_visible_in_tree()
+			if current is Control:
+				dock_size = current.size
 			break
 		current = current.get_parent()
+	var base_control := EditorInterface.get_base_control()
 	return {
 		"ok": true,
 		"node_path": str(root.get_path_to(node)),
 		"node_type": node.get_class(),
 		"main_screen": main_screen,
+		"distraction_free_mode": EditorInterface.distraction_free_mode,
+		"base_size": {"x": base_control.size.x, "y": base_control.size.y},
 		"inspector_visible": inspector.is_visible_in_tree(),
+		"inspector_size": {"x": inspector.size.x, "y": inspector.size.y},
 		"inspector_dock": dock_name,
-		"dock_visible": dock_visible
+		"dock_visible": dock_visible,
+		"dock_size": {"x": dock_size.x, "y": dock_size.y},
+		"ancestors": ancestors
 	}
 
 
