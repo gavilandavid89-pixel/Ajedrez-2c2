@@ -36,35 +36,92 @@ jobs:
           echo "/tmp/godot" >> "$GITHUB_PATH"
           /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --version
 
-      - name: Open the graphical editor and connect the headless operator
+      - name: Verify discovery, live commands, editor restart, and reconnection
         shell: bash
         run: |
           set -euo pipefail
           GODOT="Godot_v4.7.2-stable_linux.x86_64"
           PROJECT="ajedrez_2c2_v161"
           mkdir -p artifacts
-          xvfb-run -a -s "-screen 0 1600x1000x24" bash -euo pipefail -c '
-            "'"$GODOT"'" --editor --path "'"$PROJECT"'" --rendering-method gl_compatibility > /tmp/godot-editor.log 2>&1 &
+          xvfb-run -a -s "-screen 0 1600x1000x24" env GODOT="$GODOT" PROJECT="$PROJECT" bash -euo pipefail <<'SCRIPT'
+          start_editor() {
+            "$GODOT" --editor --path "$PROJECT" --rendering-method gl_compatibility >> /tmp/godot-editor.log 2>&1 &
             editor_pid=$!
-            cleanup() {
+          }
+
+          wait_for_count() {
+            local pattern="$1"
+            local expected="$2"
+            for _ in $(seq 1 120); do
+              local count
+              count=$(grep -c "$pattern" /tmp/session-watcher.log 2>/dev/null || true)
+              if [ "$count" -ge "$expected" ]; then
+                return 0
+              fi
+              sleep 0.25
+            done
+            echo "Timed out waiting for $pattern count $expected"
+            cat /tmp/session-watcher.log || true
+            return 1
+          }
+
+          cleanup() {
+            if [ -n "${watcher_pid:-}" ]; then
+              kill "$watcher_pid" 2>/dev/null || true
+              wait "$watcher_pid" 2>/dev/null || true
+            fi
+            if [ -n "${editor_pid:-}" ]; then
               kill "$editor_pid" 2>/dev/null || true
               wait "$editor_pid" 2>/dev/null || true
-            }
-            trap cleanup EXIT
-            "'"$GODOT"'" --headless --path "'"$PROJECT"'" --script res://tools/headless_bridge/bridge_probe.gd -- show_test_marker
-            import -window root -silent artifacts/editor-with-headless-marker.png
-            "'"$GODOT"'" --headless --path "'"$PROJECT"'" --script res://tools/headless_bridge/bridge_probe.gd -- clear_test_marker
-            import -window root -silent artifacts/editor-after-revert.png
-            test -s artifacts/editor-with-headless-marker.png
-            test -s artifacts/editor-after-revert.png
-          '
+            fi
+          }
+          trap cleanup EXIT
+
+          : > /tmp/godot-editor.log
+          : > /tmp/session-watcher.log
+          start_editor
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/session_watcher.gd > /tmp/session-watcher.log 2>&1 &
+          watcher_pid=$!
+          wait_for_count "SESSION_CONNECTED" 1
+
+          echo "Stopping editor to test loss detection..."
+          kill "$editor_pid" 2>/dev/null || true
+          wait "$editor_pid" 2>/dev/null || true
+          editor_pid=""
+          wait_for_count "SESSION_DISCONNECTED" 1
+
+          echo "Restarting editor to test automatic reconnection..."
+          start_editor
+          wait_for_count "SESSION_CONNECTED" 2
+          kill "$watcher_pid" 2>/dev/null || true
+          wait "$watcher_pid" 2>/dev/null || true
+          watcher_pid=""
+
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- show_test_marker
+          import -window root -silent artifacts/editor-with-headless-marker.png
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- clear_test_marker
+          import -window root -silent artifacts/editor-after-revert.png
+
+          test -s artifacts/editor-with-headless-marker.png
+          test -s artifacts/editor-after-revert.png
+          changed_pixels=$(compare -metric AE artifacts/editor-with-headless-marker.png artifacts/editor-after-revert.png null: 2>&1 || true)
+          changed_pixels="${changed_pixels%%$'\n'*}"
+          if ! [[ "$changed_pixels" =~ ^[0-9]+$ ]] || [ "$changed_pixels" -le 0 ]; then
+            echo "Screenshot verification failed: no visible UI difference detected."
+            exit 1
+          fi
+          echo "SCREENSHOT_DIFF_PASS changed_pixels=$changed_pixels"
+          grep -q "SESSION_CONNECTED" /tmp/session-watcher.log
+          grep -q "SESSION_DISCONNECTED" /tmp/session-watcher.log
+          grep -q "BRIDGE_IDLE_TIMEOUT_PASS" /tmp/session-watcher.log || true
+          cp /tmp/session-watcher.log artifacts/session-watcher.log
+          cp /tmp/godot-editor.log artifacts/godot-editor.log
+          SCRIPT
 
       - name: Upload editor screenshots and logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: headless-session-bridge-evidence
-          path: |
-            artifacts/
-            /tmp/godot-editor.log
+          path: artifacts/
           if-no-files-found: warn
