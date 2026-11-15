@@ -1,0 +1,1 @@
+Trigger keyboard submission test for Godot native project creation.
