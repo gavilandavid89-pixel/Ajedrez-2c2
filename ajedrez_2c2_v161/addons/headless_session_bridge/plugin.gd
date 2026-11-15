@@ -311,6 +311,9 @@ func _serialize_node(node: Node, scene_root: Node, depth: int, budget: Dictionar
 		"groups": _get_group_names(node),
 		"child_count": node.get_child_count(),
 		"properties": _inspect_node_properties(node),
+		# Dynamic Inspector metadata is read-only discovery. Editing remains
+		# restricted to explicit, typed commands with undo support.
+		"inspector": _inspect_object_inspector(node),
 		"children": []
 	}
 	if depth >= 8:
@@ -377,6 +380,112 @@ func _inspect_node_properties(node: Node) -> Dictionary:
 		properties["one_way_collision"] = collision_shape.one_way_collision
 		properties["shape"] = _inspect_shape_resource(collision_shape.shape)
 	return properties
+
+
+const MAX_INSPECTOR_PROPERTIES := 120
+const MAX_INSPECTOR_STRING_LENGTH := 512
+const INSPECTOR_EXCLUDED_USAGE := PROPERTY_USAGE_INTERNAL
+
+
+func _inspect_object_inspector(object: Object) -> Dictionary:
+	var properties: Array[Dictionary] = []
+	var property_list := object.get_property_list()
+	var truncated := false
+	for info in property_list:
+		var usage := int(info.get("usage", 0))
+		var property_name := str(info.get("name", ""))
+		if property_name.is_empty() or (usage & INSPECTOR_EXCLUDED_USAGE) != 0:
+			continue
+		# Keep editor-visible fields and script variables. Do not expose
+		# storage-only implementation details or internal engine state.
+		if (usage & PROPERTY_USAGE_EDITOR) == 0 and (usage & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
+			continue
+		if (usage & PROPERTY_USAGE_CATEGORY) != 0 or (usage & PROPERTY_USAGE_GROUP) != 0 or (usage & PROPERTY_USAGE_SUBGROUP) != 0:
+			properties.append({
+				"name": property_name,
+				"kind": "section",
+				"usage": usage
+			})
+			continue
+		if properties.size() >= MAX_INSPECTOR_PROPERTIES:
+			truncated = true
+			break
+		var property_type := int(info.get("type", TYPE_NIL))
+		var entry := {
+			"name": property_name,
+			"type": type_string(property_type),
+			"type_id": property_type,
+			"hint": int(info.get("hint", PROPERTY_HINT_NONE)),
+			"hint_string": _bounded_inspector_string(str(info.get("hint_string", ""))),
+			"usage": usage,
+			"editable": (usage & PROPERTY_USAGE_READ_ONLY) == 0,
+			"value": _serialize_inspector_value(object.get(property_name))
+		}
+		if info.has("class_name"):
+			entry["class_name"] = str(info.get("class_name", ""))
+		properties.append(entry)
+	return {
+		"object_class": object.get_class(),
+		"property_count": properties.size(),
+		"properties": properties,
+		"truncated": truncated
+	}
+
+
+func _bounded_inspector_string(value: String) -> String:
+	if value.length() > MAX_INSPECTOR_STRING_LENGTH:
+		return value.substr(0, MAX_INSPECTOR_STRING_LENGTH) + "…"
+	return value
+
+
+func _serialize_inspector_value(value: Variant) -> Variant:
+	match typeof(value):
+		TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING:
+			if value is String:
+				return _bounded_inspector_string(value)
+			return value
+		TYPE_VECTOR2:
+			return {"x": value.x, "y": value.y}
+		TYPE_VECTOR2I:
+			return {"x": value.x, "y": value.y}
+		TYPE_VECTOR3:
+			return {"x": value.x, "y": value.y, "z": value.z}
+		TYPE_VECTOR3I:
+			return {"x": value.x, "y": value.y, "z": value.z}
+		TYPE_COLOR:
+			return {"r": value.r, "g": value.g, "b": value.b, "a": value.a}
+		TYPE_RECT2:
+			return {"position": {"x": value.position.x, "y": value.position.y}, "size": {"x": value.size.x, "y": value.size.y}}
+		TYPE_RECT2I:
+			return {"position": {"x": value.position.x, "y": value.position.y}, "size": {"x": value.size.x, "y": value.size.y}}
+		TYPE_NODE_PATH:
+			return str(value)
+		TYPE_STRING_NAME:
+			return str(value)
+		TYPE_ARRAY:
+			var items: Array = []
+			for index in range(min(value.size(), 32)):
+				var item: Variant = value[index]
+				if typeof(item) in [TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING, TYPE_VECTOR2, TYPE_VECTOR2I, TYPE_VECTOR3, TYPE_VECTOR3I, TYPE_COLOR, TYPE_NODE_PATH, TYPE_STRING_NAME]:
+					items.append(_serialize_inspector_value(item))
+				else:
+					items.append({"type": type_string(typeof(item)), "summary": "complex_value"})
+			return {"items": items, "size": value.size(), "truncated": value.size() > items.size()}
+		TYPE_DICTIONARY:
+			return {"size": value.size(), "summary": "dictionary_not_expanded"}
+		TYPE_OBJECT:
+			if value == null:
+				return null
+			if value is Resource:
+				var resource := value as Resource
+				return {
+					"type": resource.get_class(),
+					"resource_path": resource.resource_path,
+					"local_to_scene": resource.resource_local_to_scene
+				}
+			return {"type": value.get_class(), "summary": "object_reference"}
+		_:
+			return {"type": type_string(typeof(value)), "summary": "not_serialized"}
 
 
 func _inspect_shape_resource(shape: Shape2D) -> Dictionary:
