@@ -17,6 +17,8 @@ var _status_label: Label
 var _marker_label: Label
 var _panel: VBoxContainer
 var _last_activity_msec := 0
+var _video_recording: Dictionary = {}
+var _capture_sequence := 0
 
 
 func _enter_tree() -> void:
@@ -121,6 +123,7 @@ func _process(_delta: float) -> void:
 		_clients[index] = client
 
 	_poll_pending_scene_opens()
+	_process_video_recording()
 
 
 func _has_pending_scene_open(peer: StreamPeerTCP) -> bool:
@@ -213,6 +216,18 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 					"deadline_msec": Time.get_ticks_msec() + SCENE_OPEN_TIMEOUT_MS
 				})
 				return
+		"capture_editor_screenshot":
+			var capture_result := _capture_editor_screenshot()
+			response["ok"] = bool(capture_result.get("ok", false))
+			response["result"] = capture_result
+		"start_editor_video":
+			var video_start_result := _start_editor_video(request.get("args", {}))
+			response["ok"] = bool(video_start_result.get("ok", false))
+			response["result"] = video_start_result
+		"stop_editor_video":
+			var video_stop_result := _stop_editor_video()
+			response["ok"] = bool(video_stop_result.get("ok", false))
+			response["result"] = video_stop_result
 		"inspect_scene":
 			var inspect_result := _inspect_edited_scene()
 			response["ok"] = bool(inspect_result.get("ok", false))
@@ -924,3 +939,164 @@ func _open_project_scene(raw_args: Variant) -> Dictionary:
 		return {"ok": false, "error": "scene_not_found"}
 	EditorInterface.open_scene_from_path(scene_path)
 	return {"ok": true, "scene_path": scene_path, "pending": true}
+
+
+
+const CAPTURE_DIRECTORY := "user://headless_bridge_captures"
+const MAX_VIDEO_FPS := 10
+const MAX_VIDEO_SECONDS := 30
+const MAX_VIDEO_FRAMES := 300
+
+
+func _capture_editor_window_image() -> Dictionary:
+	var screen_index := DisplayServer.window_get_current_screen()
+	var screen_image := DisplayServer.screen_get_image(screen_index)
+	if screen_image == null or screen_image.is_empty():
+		return {"ok": false, "error": "screen_capture_unavailable"}
+	var screen_origin := DisplayServer.screen_get_position(screen_index)
+	var window_position := DisplayServer.window_get_position()
+	var window_size := DisplayServer.window_get_size()
+	var local_position := window_position - screen_origin
+	var rect := Rect2i(local_position, window_size)
+	var bounds := Rect2i(Vector2i.ZERO, screen_image.get_size())
+	var clipped := rect.intersection(bounds)
+	if clipped.size.x <= 0 or clipped.size.y <= 0:
+		return {"ok": false, "error": "editor_window_outside_capture_screen"}
+	var editor_image := screen_image.get_region(clipped)
+	if editor_image == null or editor_image.is_empty():
+		return {"ok": false, "error": "editor_window_crop_failed"}
+	return {
+		"ok": true,
+		"image": editor_image,
+		"screen": screen_index,
+		"window_rect": {"x": clipped.position.x, "y": clipped.position.y, "width": clipped.size.x, "height": clipped.size.y}
+	}
+
+
+func _ensure_capture_directory() -> bool:
+	return DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CAPTURE_DIRECTORY)) == OK or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(CAPTURE_DIRECTORY))
+
+
+func _capture_editor_screenshot() -> Dictionary:
+	if not _video_recording.is_empty():
+		return {"ok": false, "error": "video_recording_in_progress"}
+	if not _ensure_capture_directory():
+		return {"ok": false, "error": "capture_directory_unavailable"}
+	var captured := _capture_editor_window_image()
+	if not bool(captured.get("ok", false)):
+		return captured
+	_capture_sequence += 1
+	var file_name := "editor_%d_%d.png" % [OS.get_process_id(), _capture_sequence]
+	var capture_path := CAPTURE_DIRECTORY.path_join(file_name)
+	var image: Image = captured["image"]
+	var error := image.save_png(capture_path)
+	if error != OK:
+		return {"ok": false, "error": "screenshot_save_failed", "code": error}
+	return {
+		"ok": true,
+		"capture_path": ProjectSettings.globalize_path(capture_path),
+		"width": image.get_width(),
+		"height": image.get_height(),
+		"source": "actual_editor_window",
+		"window_rect": captured["window_rect"],
+		"screen": captured["screen"]
+	}
+
+
+func _start_editor_video(raw_args: Variant) -> Dictionary:
+	if not _video_recording.is_empty():
+		return {"ok": false, "error": "video_recording_already_active"}
+	if not raw_args is Dictionary:
+		return {"ok": false, "error": "invalid_arguments"}
+	var fps := int(raw_args.get("fps", 5))
+	var duration := int(raw_args.get("duration_seconds", 5))
+	if fps < 1 or fps > MAX_VIDEO_FPS:
+		return {"ok": false, "error": "fps_out_of_range", "max_fps": MAX_VIDEO_FPS}
+	if duration < 1 or duration > MAX_VIDEO_SECONDS or fps * duration > MAX_VIDEO_FRAMES:
+		return {"ok": false, "error": "duration_out_of_range", "max_seconds": MAX_VIDEO_SECONDS, "max_frames": MAX_VIDEO_FRAMES}
+	if not _ensure_capture_directory():
+		return {"ok": false, "error": "capture_directory_unavailable"}
+	var captured := _capture_editor_window_image()
+	if not bool(captured.get("ok", false)):
+		return captured
+	var session_id := "%d_%d" % [OS.get_process_id(), Time.get_ticks_usec()]
+	var frame_directory := CAPTURE_DIRECTORY.path_join("video_" + session_id)
+	if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(frame_directory)) != OK:
+		return {"ok": false, "error": "video_frame_directory_unavailable"}
+	_video_recording = {
+		"session_id": session_id,
+		"frame_directory": frame_directory,
+		"fps": fps,
+		"duration_seconds": duration,
+		"max_frames": fps * duration,
+		"frames": 0,
+		"next_frame_msec": 0,
+		"started_msec": Time.get_ticks_msec(),
+		"state": "recording"
+	}
+	return {"ok": true, "session_id": session_id, "status": "recording", "fps": fps, "duration_seconds": duration, "max_frames": fps * duration}
+
+
+func _process_video_recording() -> void:
+	if _video_recording.is_empty():
+		return
+	var now := Time.get_ticks_msec()
+	var fps := int(_video_recording["fps"])
+	var interval := maxi(1, int(1000.0 / float(fps)))
+	if now < int(_video_recording["next_frame_msec"]):
+		return
+	if now - int(_video_recording["started_msec"]) >= int(_video_recording["duration_seconds"]) * 1000 or int(_video_recording["frames"]) >= int(_video_recording["max_frames"]):
+		_finalize_editor_video()
+		return
+	var captured := _capture_editor_window_image()
+	if not bool(captured.get("ok", false)):
+		_video_recording["capture_error"] = str(captured.get("error", "capture_failed"))
+		_finalize_editor_video()
+		return
+	var frame_index := int(_video_recording["frames"])
+	var frame_path := str(_video_recording["frame_directory"]).path_join("frame_%05d.png" % frame_index)
+	var image: Image = captured["image"]
+	if image.save_png(frame_path) != OK:
+		_video_recording["capture_error"] = "frame_save_failed"
+		_finalize_editor_video()
+		return
+	_video_recording["frames"] = frame_index + 1
+	_video_recording["next_frame_msec"] = now + interval
+	if int(_video_recording["frames"]) >= int(_video_recording["max_frames"]):
+		_finalize_editor_video()
+
+
+func _stop_editor_video() -> Dictionary:
+	if _video_recording.is_empty():
+		return {"ok": false, "error": "no_video_recording"}
+	return _finalize_editor_video()
+
+
+func _finalize_editor_video() -> Dictionary:
+	if _video_recording.is_empty():
+		return {"ok": false, "error": "no_video_recording"}
+	var recording := _video_recording.duplicate(true)
+	_video_recording.clear()
+	var frames := int(recording.get("frames", 0))
+	if frames < 2:
+		return {"ok": false, "error": "not_enough_video_frames", "frames": frames, "capture_error": recording.get("capture_error", "")}
+	var output_path := CAPTURE_DIRECTORY.path_join("editor_" + str(recording["session_id"]) + ".mp4")
+	var args := PackedStringArray([
+		"-y", "-loglevel", "error", "-framerate", str(recording["fps"]),
+		"-i", str(recording["frame_directory"]).path_join("frame_%05d.png"),
+		"-frames:v", str(frames), "-c:v", "libx264", "-pix_fmt", "yuv420p",
+		"-movflags", "+faststart", ProjectSettings.globalize_path(output_path)
+	])
+	var output: Array = []
+	var exit_code := OS.execute("ffmpeg", args, output, true)
+	if exit_code != 0 or not FileAccess.file_exists(output_path):
+		return {"ok": false, "error": "video_encoding_failed", "exit_code": exit_code, "output": output}
+	return {
+		"ok": true,
+		"video_path": ProjectSettings.globalize_path(output_path),
+		"frames": frames,
+		"fps": recording["fps"],
+		"duration_seconds": float(frames) / float(recording["fps"]),
+		"source": "actual_editor_window",
+		"capture_error": recording.get("capture_error", "")
+	}
