@@ -930,7 +930,7 @@ func _create_sprite_frames(raw_args: Variant) -> Dictionary:
 		return {"ok": false, "error": "invalid_args"}
 	var args: Dictionary = raw_args
 	var resource_path := str(args.get("path", ""))
-	if not resource_path.begins_with("res://") or resource_path.contains("..") or resource_path.contains("\\") or resource_path.contains("//") or not resource_path.ends_with(".tres"):
+	if not resource_path.begins_with("res://") or resource_path.contains("..") or resource_path.contains("\\") or not resource_path.ends_with(".tres"):
 		return {"ok": false, "error": "invalid_sprite_frames_path"}
 	if ResourceLoader.exists(resource_path) or FileAccess.file_exists(resource_path):
 		return {"ok": false, "error": "resource_already_exists", "path": resource_path}
