@@ -19,6 +19,9 @@ grep -q '"SandboxBody"' artifacts/collision-scene-inspection.log
 grep -q '"SandboxCollision"' artifacts/collision-scene-inspection.log
 grep -q 'CircleShape2D' artifacts/collision-scene-inspection.log
 echo "FRESH_PROJECT_COLLISION_SHAPE_PASS"
+run_probe open_scene '{"path":"res://main.tscn"}' | tee artifacts/open-scene-response.log
+grep -q 'BRIDGE_SCENE_OPEN_CONFIRMED res://main.tscn' artifacts/open-scene-response.log
+echo "FRESH_PROJECT_OPEN_SCENE_PASS"
 run_probe focus_inspector '{"node_path":"SandboxNode","main_screen":"2D"}' | tee artifacts/inspector-focus-response.log
 grep -q '"inspector_visible":true' artifacts/inspector-focus-response.log
 grep -q '"dock_visible":true' artifacts/inspector-focus-response.log
