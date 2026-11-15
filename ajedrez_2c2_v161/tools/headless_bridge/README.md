@@ -32,8 +32,8 @@ godot --headless --path . --script res://tools/headless_bridge/bridge_probe.gd -
 ```
 
 Commands are explicitly allowlisted: `ping`, `show_test_marker`,
-`clear_test_marker`, `open_scene`, `inspect_scene`, `list_project_resources`
-and `add_node`. `open_scene` accepts a JSON object such as
+`clear_test_marker`, `open_scene`, `inspect_scene`, `list_project_resources`,
+`add_node` and `set_node_properties`. `open_scene` accepts a JSON object such as
 `{"path":"res://scenes/loading.tscn"}` and only permits `.tscn` files beneath
 `res://scenes/`. The inspection commands return a bounded scene-tree snapshot
 (maximum 200 nodes, depth 8) and a bounded project-resource inventory (maximum
@@ -51,9 +51,15 @@ or returns a timeout error if that confirmation never arrives. Pending scene
 opens are exempt from the ordinary five-second idle-peer cleanup so the full
 ten-second scene confirmation window remains available; the one-shot probe
 waits up to fifteen seconds for the definitive response. `add_node`
-accepts only a fixed set of common 2D/UI node classes, adds the node to the
+accepts only a fixed set of common 2D/UI/physics node classes, adds the node to the
 currently edited scene through the editor undo manager, and does not save the
-scene automatically. The user can inspect and undo the change in the editor. Requests are JSON lines containing the protocol version,
+scene automatically. `set_node_properties` applies a bounded typed allowlist to
+scene-relative node paths (2D transforms, collision layers/masks, Area2D flags,
+CharacterBody2D movement configuration, ray/shape-cast settings, and collision
+shape flags). Values are validated before any edit is committed; changes are
+recorded as one editor undo action. Arbitrary properties, object references,
+scripts, and resource mutation are not accepted. The user can inspect and undo
+changes in the editor. Requests are JSON lines containing the protocol version,
 project fingerprint and random session token. No arbitrary GDScript, shell
 commands, file writes, or eval payloads are accepted.
 
@@ -95,8 +101,8 @@ clients.
 - Incoming buffered JSON lines are limited to 64 KiB; oversized requests are
   disconnected.
 - Command-level failures are propagated through the top-level `ok` response.
-- `add_node` is the only scene-mutating command and is limited to the current
-  edited scene, a fixed node-type allowlist, and the editor undo history.
+- Scene mutations are limited to the current edited scene, fixed node/property
+  allowlists, strict value validation, and the editor undo history.
 - Scene/resource inspection is bounded to prevent unbounded responses.
 - No command saves a scene or overwrites project assets automatically.
 - The bridge is an experimental QA/operator interface, not a production
