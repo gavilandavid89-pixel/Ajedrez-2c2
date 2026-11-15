@@ -226,9 +226,9 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			response["ok"] = bool(result.get("ok", false))
 			response["result"] = result
 		"set_node_properties":
-			var result := _set_node_properties(request.get("args", {}))
-			response["ok"] = bool(result.get("ok", false))
-			response["result"] = result
+			var property_result := _set_node_properties(request.get("args", {}))
+			response["ok"] = bool(property_result.get("ok", false))
+			response["result"] = property_result
 		_:
 			response = {"ok": false, "error": "command_not_allowed"}
 	_send_response(peer, response)
