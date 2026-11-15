@@ -19,3 +19,8 @@ grep -q '"SandboxBody"' artifacts/collision-scene-inspection.log
 grep -q '"SandboxCollision"' artifacts/collision-scene-inspection.log
 grep -q 'CircleShape2D' artifacts/collision-scene-inspection.log
 echo "FRESH_PROJECT_COLLISION_SHAPE_PASS"
+run_probe focus_inspector '{"node_path":"SandboxNode","main_screen":"2D"}' | tee artifacts/inspector-focus-response.log
+sleep 2
+run_probe inspect_selection | tee artifacts/inspector-selection-after-focus.log
+grep -q '"name":"SandboxNode"' artifacts/inspector-selection-after-focus.log
+echo "FRESH_PROJECT_VISIBLE_INSPECTOR_FOCUS_PASS"
