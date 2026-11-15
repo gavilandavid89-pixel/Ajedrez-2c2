@@ -23,7 +23,7 @@ func _run() -> void:
 			_fail("Command arguments must be a JSON object.")
 			return
 		command_args = parsed_args
-	if not ["ping", "show_test_marker", "clear_test_marker", "open_scene", "inspect_scene", "inspect_selection", "inspect_project_settings", "inspect_editor_settings", "inspect_resource", "list_project_resources", "add_node", "set_node_properties", "configure_collision_shape", "capture_editor_screenshot", "start_editor_video", "stop_editor_video"].has(action):
+	if not ["ping", "show_test_marker", "clear_test_marker", "open_scene", "inspect_scene", "inspect_selection", "inspect_project_settings", "inspect_editor_settings", "inspect_resource", "list_project_resources", "add_node", "set_node_properties", "configure_collision_shape", "capture_editor_screenshot", "start_editor_video", "stop_editor_video", "read_capture_chunk"].has(action):
 		_fail("Unsupported action: " + action)
 		return
 
