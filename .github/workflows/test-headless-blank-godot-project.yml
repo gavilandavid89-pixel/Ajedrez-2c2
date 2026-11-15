@@ -61,8 +61,10 @@ jobs:
           sleep 1
           # Open the native New Project dialog, enter a new project path and
           # use Godot's own "Create & Edit" action (not a hand-written project.godot).
-          xdotool mousemove 800 65 click 1
-          sleep 1
+          xdotool mousemove --sync 705 117 click 1
+          sleep 2
+          import -window root -silent "$GITHUB_WORKSPACE/artifacts/project-manager-projects-tab.png"
+          exit 0
           xdotool key ctrl+a
           xdotool type --clearmodifiers "Bridge Sandbox"
           xdotool key Tab
