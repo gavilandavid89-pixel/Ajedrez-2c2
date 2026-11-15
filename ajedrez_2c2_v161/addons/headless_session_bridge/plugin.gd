@@ -225,6 +225,10 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var settings_result := _inspect_project_settings()
 			response["ok"] = bool(settings_result.get("ok", false))
 			response["result"] = settings_result
+		"inspect_editor_settings":
+			var editor_settings_result := _inspect_editor_settings()
+			response["ok"] = bool(editor_settings_result.get("ok", false))
+			response["result"] = editor_settings_result
 		"list_project_resources":
 			var resources_result := _list_project_resources()
 			response["ok"] = bool(resources_result.get("ok", false))
@@ -333,6 +337,53 @@ func _inspect_project_settings() -> Dictionary:
 		"count": entries.size(),
 		"truncated": truncated,
 		"scope": PROJECT_SETTING_PREFIXES
+	}
+
+
+const MAX_EDITOR_SETTINGS := 180
+const EDITOR_SETTING_PREFIXES := [
+	"interface/", "text_editor/", "docks/", "filesystem/"
+]
+
+
+func _inspect_editor_settings() -> Dictionary:
+	var editor_settings := EditorInterface.get_editor_settings()
+	if editor_settings == null:
+		return {"ok": false, "error": "editor_settings_unavailable"}
+	var entries: Array[Dictionary] = []
+	var truncated := false
+	for info in editor_settings.get_property_list():
+		var setting_name := str(info.get("name", ""))
+		var include_setting := false
+		for prefix in EDITOR_SETTING_PREFIXES:
+			if setting_name.begins_with(prefix):
+				include_setting = true
+				break
+		if not include_setting:
+			continue
+		var usage := int(info.get("usage", 0))
+		if (usage & PROPERTY_USAGE_SECRET) != 0 or (usage & PROPERTY_USAGE_INTERNAL) != 0:
+			continue
+		if entries.size() >= MAX_EDITOR_SETTINGS:
+			truncated = true
+			break
+		var value: Variant = editor_settings.get_setting(setting_name)
+		entries.append({
+			"name": setting_name,
+			"type": type_string(int(info.get("type", TYPE_NIL))),
+			"hint": int(info.get("hint", PROPERTY_HINT_NONE)),
+			"hint_string": _bounded_inspector_string(str(info.get("hint_string", ""))),
+			"usage": usage,
+			"editable": (usage & PROPERTY_USAGE_READ_ONLY) == 0,
+			"value": _serialize_inspector_value(value)
+		})
+	return {
+		"ok": true,
+		"settings": entries,
+		"count": entries.size(),
+		"truncated": truncated,
+		"scope": EDITOR_SETTING_PREFIXES,
+		"warning": "These preferences belong to the editor installation, not the project."
 	}
 
 
