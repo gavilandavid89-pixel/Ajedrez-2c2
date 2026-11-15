@@ -23,7 +23,7 @@ echo "FRESH_PROJECT_COLLISION_SHAPE_AND_PROPERTY_PASS"
 run_probe undo_bridge_action | tee artifacts/undo-bridge-action-response.log
 sed -n 's/^BRIDGE_TEST_PASS //p' artifacts/undo-bridge-action-response.log | tail -n 1 | jq -e '.result.direction == "undo" and .result.action_name == "Headless Bridge: Configure collision shape SandboxCollision" and .result.version_after < .result.version_before' >/dev/null
 run_probe inspect_scene | tee artifacts/undo-scene-inspection.log
-sed -n 's/^BRIDGE_TEST_PASS //p' artifacts/undo-scene-inspection.log | tail -n 1 | jq -e '.result.root.children[] | select(.name == "SandboxBody") | .children[] | select(.name == "SandboxCollision") | .properties.shape == null' >/dev/null
+sed -n 's/^BRIDGE_TEST_PASS //p' artifacts/undo-scene-inspection.log | tail -n 1 | jq -e '.result.root.children[] | select(.name == "SandboxBody") | .children[] | select(.name == "SandboxCollision") | .inspector.properties[] | select(.name == "shape") | .value == null' >/dev/null
 echo "FRESH_PROJECT_REAL_UNDO_PASS"
 run_probe redo_bridge_action | tee artifacts/redo-bridge-action-response.log
 sed -n 's/^BRIDGE_TEST_PASS //p' artifacts/redo-bridge-action-response.log | tail -n 1 | jq -e '.result.direction == "redo" and .result.action_name == "Headless Bridge: Configure collision shape SandboxCollision" and .result.version_after > .result.version_before' >/dev/null
