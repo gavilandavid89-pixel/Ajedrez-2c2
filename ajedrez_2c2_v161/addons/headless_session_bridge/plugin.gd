@@ -38,7 +38,7 @@ func _enter_tree() -> void:
 	_marker_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_panel.add_child(_marker_label)
 	var hint := Label.new()
-	hint.text = "Solo acepta ping, show_test_marker y clear_test_marker."
+	hint.text = "Órdenes permitidas: ping, marcadores, escenas, inspección, recursos y nodos."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_panel.add_child(hint)
 	add_control_to_bottom_panel(_panel, "Headless Bridge")
@@ -99,6 +99,12 @@ func _process(_delta: float) -> void:
 		_buffer = ""
 		return
 	_buffer += packet[1].get_string_from_utf8()
+	if _buffer.length() > 65536:
+		_peer.disconnect_from_host()
+		_peer = null
+		_buffer = ""
+		_status_label.text = "Estado: solicitud rechazada (mensaje demasiado grande)"
+		return
 	while _buffer.contains("\n"):
 		var split_at := _buffer.find("\n")
 		var line := _buffer.substr(0, split_at).strip_edges()
@@ -138,11 +144,17 @@ func _handle_request(line: String) -> void:
 			_status_label.text = "Estado: cambio temporal revertido"
 			response["status"] = "marker_cleared"
 		"open_scene":
-			response["result"] = _open_project_scene(request.get("args", {}))
+			var result := _open_project_scene(request.get("args", {}))
+			response["ok"] = bool(result.get("ok", false))
+			response["result"] = result
 		"inspect_scene":
-			response["result"] = _inspect_edited_scene()
+			var result := _inspect_edited_scene()
+			response["ok"] = bool(result.get("ok", false))
+			response["result"] = result
 		"list_project_resources":
-			response["result"] = _list_project_resources()
+			var result := _list_project_resources()
+			response["ok"] = bool(result.get("ok", false))
+			response["result"] = result
 		"add_node":
 			var result := _add_node_to_edited_scene(request.get("args", {}))
 			response["ok"] = bool(result.get("ok", false))
@@ -299,10 +311,11 @@ func _add_node_to_edited_scene(raw_args: Variant) -> Dictionary:
 func _open_project_scene(raw_args: Variant) -> Dictionary:
 	if not raw_args is Dictionary:
 		return {"ok": false, "error": "invalid_args"}
-	var scene_path := str(raw_args.get("path", ""))
+	var requested_path := str(raw_args.get("path", ""))
+	var scene_path := requested_path.simplify_path()
 	if not scene_path.begins_with("res://scenes/") or not scene_path.ends_with(".tscn"):
 		return {"ok": false, "error": "scene_path_not_allowed"}
 	if not FileAccess.file_exists(scene_path):
 		return {"ok": false, "error": "scene_not_found"}
 	EditorInterface.open_scene_from_path(scene_path)
-	return {"ok": true, "scene_path": scene_path}
+	return {"ok": true, "scene_path": scene_path, "accepted": true}
