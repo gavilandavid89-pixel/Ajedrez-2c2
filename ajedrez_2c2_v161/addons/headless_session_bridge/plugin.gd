@@ -144,17 +144,17 @@ func _handle_request(line: String) -> void:
 			_status_label.text = "Estado: cambio temporal revertido"
 			response["status"] = "marker_cleared"
 		"open_scene":
-			var result := _open_project_scene(request.get("args", {}))
-			response["ok"] = bool(result.get("ok", false))
-			response["result"] = result
+			var open_result := _open_project_scene(request.get("args", {}))
+			response["ok"] = bool(open_result.get("ok", false))
+			response["result"] = open_result
 		"inspect_scene":
-			var result := _inspect_edited_scene()
-			response["ok"] = bool(result.get("ok", false))
-			response["result"] = result
+			var inspect_result := _inspect_edited_scene()
+			response["ok"] = bool(inspect_result.get("ok", false))
+			response["result"] = inspect_result
 		"list_project_resources":
-			var result := _list_project_resources()
-			response["ok"] = bool(result.get("ok", false))
-			response["result"] = result
+			var resources_result := _list_project_resources()
+			response["ok"] = bool(resources_result.get("ok", false))
+			response["result"] = resources_result
 		"add_node":
 			var result := _add_node_to_edited_scene(request.get("args", {}))
 			response["ok"] = bool(result.get("ok", false))
