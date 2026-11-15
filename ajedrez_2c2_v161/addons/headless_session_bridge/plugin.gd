@@ -1020,8 +1020,8 @@ func _start_editor_video(raw_args: Variant) -> Dictionary:
 	if not bool(captured.get("ok", false)):
 		return captured
 	var session_id := "%d_%d" % [OS.get_process_id(), Time.get_ticks_usec()]
-	var frame_directory := CAPTURE_DIRECTORY.path_join("video_" + session_id)
-	if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(frame_directory)) != OK:
+	var frame_directory := ProjectSettings.globalize_path(CAPTURE_DIRECTORY.path_join("video_" + session_id))
+	if DirAccess.make_dir_recursive_absolute(frame_directory) != OK:
 		return {"ok": false, "error": "video_frame_directory_unavailable"}
 	_video_recording = {
 		"session_id": session_id,
@@ -1080,12 +1080,12 @@ func _finalize_editor_video() -> Dictionary:
 	var frames := int(recording.get("frames", 0))
 	if frames < 2:
 		return {"ok": false, "error": "not_enough_video_frames", "frames": frames, "capture_error": recording.get("capture_error", "")}
-	var output_path := CAPTURE_DIRECTORY.path_join("editor_" + str(recording["session_id"]) + ".mp4")
+	var output_path := ProjectSettings.globalize_path(CAPTURE_DIRECTORY.path_join("editor_" + str(recording["session_id"]) + ".mp4"))
 	var args := PackedStringArray([
 		"-y", "-loglevel", "error", "-framerate", str(recording["fps"]),
 		"-i", str(recording["frame_directory"]).path_join("frame_%05d.png"),
 		"-frames:v", str(frames), "-c:v", "libx264", "-pix_fmt", "yuv420p",
-		"-movflags", "+faststart", ProjectSettings.globalize_path(output_path)
+		"-movflags", "+faststart", output_path
 	])
 	var output: Array = []
 	var exit_code := OS.execute("ffmpeg", args, output, true)
@@ -1093,7 +1093,7 @@ func _finalize_editor_video() -> Dictionary:
 		return {"ok": false, "error": "video_encoding_failed", "exit_code": exit_code, "output": output}
 	return {
 		"ok": true,
-		"video_path": ProjectSettings.globalize_path(output_path),
+		"video_path": output_path,
 		"frames": frames,
 		"fps": recording["fps"],
 		"duration_seconds": float(frames) / float(recording["fps"]),
