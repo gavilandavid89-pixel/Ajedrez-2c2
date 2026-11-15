@@ -471,6 +471,7 @@ func _focus_inspector(raw_args: Variant) -> Dictionary:
 	var dock_name := ""
 	var dock_visible := false
 	var dock_size := Vector2.ZERO
+	var dock_rect := Rect2()
 	var ancestors: Array[Dictionary] = []
 	while current != null:
 		var ancestor := {"name": str(current.name), "type": current.get_class()}
@@ -485,6 +486,7 @@ func _focus_inspector(raw_args: Variant) -> Dictionary:
 			dock_visible = current.is_visible_in_tree()
 			if current is Control:
 				dock_size = current.size
+				dock_rect = current.get_global_rect()
 			break
 		current = current.get_parent()
 	var base_control := EditorInterface.get_base_control()
@@ -496,6 +498,9 @@ func _focus_inspector(raw_args: Variant) -> Dictionary:
 		"main_screen": main_screen,
 		"distraction_free_mode": EditorInterface.distraction_free_mode,
 		"base_size": {"x": base_control.size.x, "y": base_control.size.y},
+		"base_global_rect": {"x": base_control.get_global_rect().position.x, "y": base_control.get_global_rect().position.y, "width": base_control.get_global_rect().size.x, "height": base_control.get_global_rect().size.y},
+		"inspector_global_rect": {"x": inspector.get_global_rect().position.x, "y": inspector.get_global_rect().position.y, "width": inspector.get_global_rect().size.x, "height": inspector.get_global_rect().size.y},
+		"dock_global_rect": {"x": dock_rect.position.x, "y": dock_rect.position.y, "width": dock_rect.size.x, "height": dock_rect.size.y},
 		"multi_window_enabled": EditorInterface.is_multi_window_enabled(),
 		"inspector_window_title": inspector_window.title,
 		"inspector_window_visible": inspector_window.visible,
