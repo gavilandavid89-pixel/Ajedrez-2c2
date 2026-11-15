@@ -4,6 +4,7 @@ extends EditorPlugin
 const BRIDGE_PORT := 48765
 const REGISTRY_PATH := "user://headless_bridge.json"
 const PROTOCOL_VERSION := 1
+const CONNECTION_IDLE_TIMEOUT_MS := 5000
 
 var _server: TCPServer
 var _peer: StreamPeerTCP
@@ -14,6 +15,7 @@ var _registry_absolute_path := ""
 var _status_label: Label
 var _marker_label: Label
 var _panel: VBoxContainer
+var _last_activity_msec := 0
 
 
 func _enter_tree() -> void:
@@ -71,6 +73,7 @@ func _process(_delta: float) -> void:
 	if _peer == null and _server.is_connection_available():
 		_peer = _server.take_connection()
 		_buffer = ""
+		_last_activity_msec = Time.get_ticks_msec()
 	if _peer == null:
 		return
 
@@ -83,7 +86,13 @@ func _process(_delta: float) -> void:
 
 	var available := _peer.get_available_bytes()
 	if available <= 0:
+		if _last_activity_msec > 0 and Time.get_ticks_msec() - _last_activity_msec > CONNECTION_IDLE_TIMEOUT_MS:
+			_peer.disconnect_from_host()
+			_peer = null
+			_buffer = ""
+			_status_label.text = "Estado: desconectado por falta de señal"
 		return
+	_last_activity_msec = Time.get_ticks_msec()
 	var packet := _peer.get_data(available)
 	if packet[0] != OK:
 		_peer = null
