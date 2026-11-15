@@ -45,10 +45,25 @@ jobs:
           GODOT="Godot_v4.7.2-stable_linux.x86_64"
           PROJECT="ajedrez_2c2_v161"
           mkdir -p artifacts
+          # A cold import can log a transient missing-cache warning while the
+          # editor theme is being initialized. Preserve that first log as
+          # evidence, then validate a second startup against the completed cache.
           "$GODOT" --headless --editor --path "$PROJECT" --import --quit > artifacts/import.log 2>&1
+
+          test -d "$PROJECT/.godot/imported"
+          imported_font=$(find "$PROJECT/.godot/imported" -maxdepth 1 -type f -name 'Inter-Medium*.fontdata' -size +0c -print -quit)
+          if [ -z "$imported_font" ]; then
+            echo "Expected imported Inter-Medium font data was not generated."
+            find "$PROJECT/.godot/imported" -maxdepth 1 -type f -printf '%f\\n' | sort | head -80
+            exit 1
+          fi
+          echo "FONT_IMPORT_CACHE_PASS: $imported_font"
+
+          "$GODOT" --headless --editor --path "$PROJECT" --quit > artifacts/editor-second-start.log 2>&1
           "$GODOT" --headless --path "$PROJECT" --script res://tests/run_tests.gd > artifacts/project-tests.log 2>&1
-          if grep -E "SCRIPT ERROR:|Parse Error:|Failed loading resource:|ERROR:.*(does not exist|Could not load|No loader found)" artifacts/import.log artifacts/project-tests.log; then
-            echo "Godot import or QA script validation reported resource/script errors."
+
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed loading resource:|ERROR:.*(does not exist|Could not load|No loader found)" artifacts/editor-second-start.log artifacts/project-tests.log; then
+            echo "Godot reported persistent resource/script errors after the import cache was generated."
             exit 1
           fi
           grep -q "RESULTADO FINAL:" artifacts/project-tests.log
