@@ -495,9 +495,9 @@ func _set_node_properties(raw_args: Variant) -> Dictionary:
 	if not raw_properties is Dictionary or raw_properties.is_empty():
 		return {"ok": false, "error": "properties_required"}
 	var allowed: Array = []
-	for class_name in NODE_PROPERTY_ALLOWLIST:
-		if node.is_class(class_name):
-			allowed.append_array(NODE_PROPERTY_ALLOWLIST[class_name])
+	for class_key in NODE_PROPERTY_ALLOWLIST:
+		if node.is_class(class_key):
+			allowed.append_array(NODE_PROPERTY_ALLOWLIST[class_key])
 	var changes: Dictionary = {}
 	for property_name in raw_properties:
 		var key := str(property_name)
