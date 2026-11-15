@@ -113,6 +113,11 @@ jobs:
 
           test -s artifacts/editor-with-headless-marker.png
           test -s artifacts/editor-after-revert.png
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- open_scene '{"path":"res://scenes/loading.tscn"}'
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- inspect_scene
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- list_project_resources
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- add_node '{"type":"Label","name":"HeadlessBridgeSmokeTest"}'
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- inspect_scene
           changed_pixels=$(compare -metric AE artifacts/editor-with-headless-marker.png artifacts/editor-after-revert.png null: 2>&1 || true)
           changed_pixels="${changed_pixels%% *}"
           cp /tmp/session-watcher.log artifacts/session-watcher.log
