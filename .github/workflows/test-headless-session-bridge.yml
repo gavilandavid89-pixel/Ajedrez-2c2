@@ -117,10 +117,9 @@ jobs:
           echo "Restarting editor to test automatic reconnection..."
           start_editor
           wait_for_count "SESSION_CONNECTED" 2
-          kill "$watcher_pid" 2>/dev/null || true
-          wait "$watcher_pid" 2>/dev/null || true
-          watcher_pid=""
-
+          # Keep the persistent watcher connected while one-shot commands
+          # open independent TCP clients. Both must work at the same time.
+          kill -0 "$watcher_pid"
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- show_test_marker
           import -window root -silent artifacts/editor-with-headless-marker.png
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- clear_test_marker
@@ -133,6 +132,11 @@ jobs:
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- list_project_resources
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- add_node '{"type":"Label","name":"HeadlessBridgeSmokeTest"}'
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- inspect_scene
+          kill -0 "$watcher_pid"
+          echo "CONCURRENT_WATCHER_AND_PROBE_PASS"
+          kill "$watcher_pid" 2>/dev/null || true
+          wait "$watcher_pid" 2>/dev/null || true
+          watcher_pid=""
           changed_pixels=$(compare -metric AE artifacts/editor-with-headless-marker.png artifacts/editor-after-revert.png null: 2>&1 || true)
           changed_pixels="${changed_pixels%% *}"
           cp /tmp/session-watcher.log artifacts/session-watcher.log
