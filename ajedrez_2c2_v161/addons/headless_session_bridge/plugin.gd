@@ -221,6 +221,10 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var selection_result := _inspect_editor_selection()
 			response["ok"] = bool(selection_result.get("ok", false))
 			response["result"] = selection_result
+		"inspect_project_settings":
+			var settings_result := _inspect_project_settings()
+			response["ok"] = bool(settings_result.get("ok", false))
+			response["result"] = settings_result
 		"list_project_resources":
 			var resources_result := _list_project_resources()
 			response["ok"] = bool(resources_result.get("ok", false))
@@ -286,6 +290,50 @@ const ALLOWED_NODE_TYPES := [
 ]
 const MAX_INSPECTED_NODES := 200
 const MAX_RESOURCE_ENTRIES := 300
+
+
+const MAX_PROJECT_SETTINGS := 250
+const PROJECT_SETTING_PREFIXES := [
+	"application/", "display/", "rendering/", "physics/",
+	"input/", "input_devices/", "audio/", "gui/"
+]
+
+
+func _inspect_project_settings() -> Dictionary:
+	var entries: Array[Dictionary] = []
+	var truncated := false
+	for info in ProjectSettings.get_property_list():
+		var setting_name := str(info.get("name", ""))
+		var include_setting := false
+		for prefix in PROJECT_SETTING_PREFIXES:
+			if setting_name.begins_with(prefix):
+				include_setting = true
+				break
+		if not include_setting:
+			continue
+		var usage := int(info.get("usage", 0))
+		if (usage & PROPERTY_USAGE_SECRET) != 0 or (usage & PROPERTY_USAGE_INTERNAL) != 0:
+			continue
+		if entries.size() >= MAX_PROJECT_SETTINGS:
+			truncated = true
+			break
+		var value: Variant = ProjectSettings.get_setting(setting_name)
+		entries.append({
+			"name": setting_name,
+			"type": type_string(int(info.get("type", TYPE_NIL))),
+			"hint": int(info.get("hint", PROPERTY_HINT_NONE)),
+			"hint_string": _bounded_inspector_string(str(info.get("hint_string", ""))),
+			"usage": usage,
+			"editable": (usage & PROPERTY_USAGE_READ_ONLY) == 0,
+			"value": _serialize_inspector_value(value)
+		})
+	return {
+		"ok": true,
+		"settings": entries,
+		"count": entries.size(),
+		"truncated": truncated,
+		"scope": PROJECT_SETTING_PREFIXES
+	}
 
 
 func _inspect_editor_selection() -> Dictionary:
@@ -410,7 +458,7 @@ func _inspect_node_properties(node: Node) -> Dictionary:
 
 const MAX_INSPECTOR_PROPERTIES := 120
 const MAX_INSPECTOR_STRING_LENGTH := 512
-const INSPECTOR_EXCLUDED_USAGE := PROPERTY_USAGE_INTERNAL
+const INSPECTOR_EXCLUDED_USAGE := PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_SECRET
 
 
 func _inspect_object_inspector(object: Object) -> Dictionary:
