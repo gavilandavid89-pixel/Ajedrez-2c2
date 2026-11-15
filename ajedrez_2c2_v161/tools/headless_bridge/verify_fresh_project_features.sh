@@ -18,7 +18,32 @@ run_probe inspect_scene | tee artifacts/collision-scene-inspection.log
 grep -q '"SandboxBody"' artifacts/collision-scene-inspection.log
 grep -q '"SandboxCollision"' artifacts/collision-scene-inspection.log
 grep -q 'CircleShape2D' artifacts/collision-scene-inspection.log
-echo "FRESH_PROJECT_COLLISION_SHAPE_PASS"
+sed -n 's/^BRIDGE_TEST_PASS //p' artifacts/collision-scene-inspection.log | tail -n 1 | jq -e '.result.root.children[] | select(.name == "SandboxNode") | .properties.position.x == 123.0 and .properties.position.y == 45.0' >/dev/null
+echo "FRESH_PROJECT_COLLISION_SHAPE_AND_PROPERTY_PASS"
+if run_probe add_node '{"type":"CollisionShape2D","name":"InvalidCollision"}' > artifacts/invalid-collision-parent.log 2>&1; then
+  echo "CollisionShape2D invalid parent was accepted" >&2
+  exit 1
+else
+  echo "FRESH_PROJECT_COLLISION_PARENT_GUARD_PASS"
+fi
+if run_probe add_node '{"type":"OS","name":"InvalidNode"}' > artifacts/invalid-node-type.log 2>&1; then
+  echo "Disallowed node type was accepted" >&2
+  exit 1
+else
+  echo "FRESH_PROJECT_NODE_ALLOWLIST_GUARD_PASS"
+fi
+if run_probe set_node_properties '{"node_path":"SandboxNode","properties":{"unknown_property":1}}' > artifacts/invalid-property.log 2>&1; then
+  echo "Unknown node property was accepted" >&2
+  exit 1
+else
+  echo "FRESH_PROJECT_PROPERTY_ALLOWLIST_GUARD_PASS"
+fi
+if run_probe open_scene '{"path":"res://../outside.tscn"}' > artifacts/invalid-scene-path.log 2>&1; then
+  echo "Path traversal scene path was accepted" >&2
+  exit 1
+else
+  echo "FRESH_PROJECT_SCENE_PATH_GUARD_PASS"
+fi
 run_probe open_scene '{"path":"res://main.tscn"}' | tee artifacts/open-scene-response.log
 grep -q 'BRIDGE_SCENE_OPEN_CONFIRMED res://main.tscn' artifacts/open-scene-response.log
 echo "FRESH_PROJECT_OPEN_SCENE_PASS"
