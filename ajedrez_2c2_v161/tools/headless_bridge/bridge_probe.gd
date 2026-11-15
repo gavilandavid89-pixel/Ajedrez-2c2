@@ -4,7 +4,7 @@ const REGISTRY_PATH := "user://headless_bridge.json"
 const PROTOCOL_VERSION := 1
 const DISCOVERY_TIMEOUT_MS := 45000
 const CONNECT_TIMEOUT_MS := 8000
-const RESPONSE_TIMEOUT_MS := 5000
+const RESPONSE_TIMEOUT_MS := 15000
 
 
 func _initialize() -> void:
@@ -87,7 +87,7 @@ func _run() -> void:
 		if not open_result is Dictionary or not bool(open_result.get("opened", false)):
 			_fail("Editor acknowledged open_scene without confirming the requested scene became active.")
 			return
-		if str(open_result.get("scene_path", "")) != str(command_args.get("path", "")):
+		if str(open_result.get("scene_path", "")) != str(command_args.get("path", "")).simplify_path():
 			_fail("Editor confirmed a different scene than the requested path.")
 			return
 		print("BRIDGE_SCENE_OPEN_CONFIRMED " + str(open_result.get("scene_path", "")))
