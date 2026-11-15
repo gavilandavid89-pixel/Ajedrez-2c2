@@ -18,6 +18,7 @@ var _marker_label: Label
 var _panel: VBoxContainer
 var _last_activity_msec := 0
 var _video_recording: Dictionary = {}
+var _last_video_result: Dictionary = {}
 var _capture_sequence := 0
 
 
@@ -228,6 +229,9 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var video_start_result := _start_editor_video(request.get("args", {}))
 			response["ok"] = bool(video_start_result.get("ok", false))
 			response["result"] = video_start_result
+		"get_editor_video_status":
+			var video_status_result := _get_editor_video_status()
+			response["result"] = video_status_result
 		"stop_editor_video":
 			var video_stop_result := _stop_editor_video()
 			response["ok"] = bool(video_stop_result.get("ok", false))
@@ -999,7 +1003,7 @@ func _capture_editor_screenshot() -> Dictionary:
 	return {
 		"ok": true,
 		"capture_path": ProjectSettings.globalize_path(capture_path),
-		"file_size": FileAccess.get_file_as_bytes(capture_path).size(),
+		"file_size": _get_capture_file_size(ProjectSettings.globalize_path(capture_path)),
 		"width": image.get_width(),
 		"height": image.get_height(),
 		"source": "actual_editor_window",
@@ -1024,6 +1028,7 @@ func _start_editor_video(raw_args: Variant) -> Dictionary:
 	var captured := _capture_editor_window_image()
 	if not bool(captured.get("ok", false)):
 		return captured
+	_last_video_result.clear()
 	var session_id := "%d_%d" % [OS.get_process_id(), Time.get_ticks_usec()]
 	var frame_directory := ProjectSettings.globalize_path(CAPTURE_DIRECTORY.path_join("video_" + session_id))
 	if DirAccess.make_dir_recursive_absolute(frame_directory) != OK:
@@ -1073,8 +1078,27 @@ func _process_video_recording() -> void:
 
 func _stop_editor_video() -> Dictionary:
 	if _video_recording.is_empty():
+		if not _last_video_result.is_empty():
+			return _last_video_result.duplicate(true)
 		return {"ok": false, "error": "no_video_recording"}
 	return _finalize_editor_video()
+
+
+func _get_editor_video_status() -> Dictionary:
+	if not _video_recording.is_empty():
+		return {"ok": true, "status": "recording", "session_id": _video_recording.get("session_id", ""), "frames": _video_recording.get("frames", 0), "max_frames": _video_recording.get("max_frames", 0), "fps": _video_recording.get("fps", 0)}
+	if not _last_video_result.is_empty():
+		return _last_video_result.duplicate(true)
+	return {"ok": true, "status": "idle"}
+
+
+func _get_capture_file_size(path: String) -> int:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return -1
+	var size := file.get_length()
+	file.close()
+	return size
 
 
 func _finalize_editor_video() -> Dictionary:
@@ -1084,7 +1108,8 @@ func _finalize_editor_video() -> Dictionary:
 	_video_recording.clear()
 	var frames := int(recording.get("frames", 0))
 	if frames < 2:
-		return {"ok": false, "error": "not_enough_video_frames", "frames": frames, "capture_error": recording.get("capture_error", "")}
+		_last_video_result = {"ok": false, "error": "not_enough_video_frames", "frames": frames, "capture_error": recording.get("capture_error", "")}
+		return _last_video_result.duplicate(true)
 	var output_path := ProjectSettings.globalize_path(CAPTURE_DIRECTORY.path_join("editor_" + str(recording["session_id"]) + ".mp4"))
 	var args := PackedStringArray([
 		"-y", "-loglevel", "error", "-framerate", str(recording["fps"]),
@@ -1095,17 +1120,19 @@ func _finalize_editor_video() -> Dictionary:
 	var output: Array = []
 	var exit_code := OS.execute("ffmpeg", args, output, true)
 	if exit_code != 0 or not FileAccess.file_exists(output_path):
-		return {"ok": false, "error": "video_encoding_failed", "exit_code": exit_code, "output": output}
-	return {
+		_last_video_result = {"ok": false, "error": "video_encoding_failed", "exit_code": exit_code, "output": output}
+		return _last_video_result.duplicate(true)
+	_last_video_result = {
 		"ok": true,
 		"video_path": output_path,
-		"file_size": FileAccess.get_file_as_bytes(output_path).size(),
+		"file_size": _get_capture_file_size(output_path),
 		"frames": frames,
 		"fps": recording["fps"],
 		"duration_seconds": float(frames) / float(recording["fps"]),
 		"source": "actual_editor_window",
 		"capture_error": recording.get("capture_error", "")
 	}
+	return _last_video_result.duplicate(true)
 
 
 
