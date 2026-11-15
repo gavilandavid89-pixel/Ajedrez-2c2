@@ -95,7 +95,7 @@ func _process(_delta: float) -> void:
 
 		var available := peer.get_available_bytes()
 		if available <= 0:
-			if Time.get_ticks_msec() - int(client["last_activity_msec"]) > CONNECTION_IDLE_TIMEOUT_MS:
+			if Time.get_ticks_msec() - int(client["last_activity_msec"]) > CONNECTION_IDLE_TIMEOUT_MS and not _has_pending_scene_open(peer):
 				peer.disconnect_from_host()
 				_remove_client(index)
 			continue
@@ -121,6 +121,13 @@ func _process(_delta: float) -> void:
 		_clients[index] = client
 
 	_poll_pending_scene_opens()
+
+
+func _has_pending_scene_open(peer: StreamPeerTCP) -> bool:
+	for pending in _pending_scene_opens:
+		if pending.get("peer") == peer:
+			return true
+	return false
 
 
 func _poll_pending_scene_opens() -> void:
