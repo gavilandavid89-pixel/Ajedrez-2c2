@@ -157,6 +157,10 @@ jobs:
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- capture_editor_screenshot | tee artifacts/editor-capture-response.json
           grep -q '"source":"actual_editor_window"' artifacts/editor-capture-response.json
           grep -q '"width":' artifacts/editor-capture-response.json
+          capture_path=$(python3 -c 'import json; print(json.load(open("artifacts/editor-capture-response.json"))["result"]["capture_path"])')
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- read_capture_chunk "{\\"path\\":\\"$capture_path\\",\\"offset\\":0,\\"length\\":1024}" | tee artifacts/editor-capture-chunk.json
+          grep -q '"encoding":"base64"' artifacts/editor-capture-chunk.json
+          grep -q '"bytes_read":1024' artifacts/editor-capture-chunk.json
           echo "REAL_EDITOR_SCREENSHOT_CAPTURE_PASS"
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- start_editor_video '{"fps":2,"duration_seconds":3}' | tee artifacts/editor-video-start.json
           sleep 2
