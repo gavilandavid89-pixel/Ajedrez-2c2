@@ -7,7 +7,7 @@ run_probe() {
   "$GODOT" --headless --path "$PROJECT" --script "$PROBE" -- "$@"
 }
 read_path() {
-  sed 's/^BRIDGE_TEST_PASS //' "$1" | jq -r "$2"
+  sed -n 's/^BRIDGE_TEST_PASS //p' "$1" | tail -n 1 | jq -r "$2"
 }
 transfer_file() {
   local source_path="$1"
