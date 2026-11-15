@@ -57,7 +57,7 @@ jobs:
             cat /tmp/godot-project-manager.log
             exit 1
           fi
-          xdotool windowactivate --sync "$wid"
+          xdotool windowfocus --sync "$wid"
           sleep 1
           # Open the native New Project dialog, enter a new project path and
           # use Godot's own "Create & Edit" action (not a hand-written project.godot).
@@ -85,7 +85,7 @@ jobs:
           # the pristine project has been created by the editor itself.
           editor_wid=$(xdotool search --onlyvisible --name "Bridge Sandbox" 2>/dev/null | tail -1 || true)
           if [ -n "$editor_wid" ]; then
-            xdotool windowactivate --sync "$editor_wid"
+            xdotool windowfocus --sync "$editor_wid"
             xdotool key alt+F4
           fi
           sleep 2
@@ -126,7 +126,7 @@ jobs:
             sleep 0.25
           done
           if [ -z "${wid:-}" ]; then cat /tmp/godot-sandbox-editor.log; exit 1; fi
-          xdotool windowactivate --sync "$wid"
+          xdotool windowfocus --sync "$wid"
           sleep 5
           xdotool key ctrl+n
           sleep 2
