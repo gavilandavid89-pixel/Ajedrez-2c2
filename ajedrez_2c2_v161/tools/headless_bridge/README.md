@@ -37,7 +37,15 @@ and `add_node`. `open_scene` accepts a JSON object such as
 `{"path":"res://scenes/loading.tscn"}` and only permits `.tscn` files beneath
 `res://scenes/`. The inspection commands return a bounded scene-tree snapshot
 (maximum 200 nodes, depth 8) and a bounded project-resource inventory (maximum
-300 entries). `open_scene` does not report success merely because the request was accepted:
+300 entries). Scene-node `path` values are relative to the edited scene root
+(the root is `.`); `runtime_path` is included separately for diagnostics and
+must never be used as a scene-edit target. Each node also reports its groups and
+a deliberately limited set of typed properties. For 2D nodes this includes
+transforms and visibility; for collision objects it includes collision layers,
+masks and pickability; `Area2D` adds monitoring flags; and `CollisionShape2D`
+reports whether a shape is assigned, its resource type, common dimensions and
+its disabled/one-way flags. This makes collision-related structure discoverable
+without exposing arbitrary editor/Object properties. `open_scene` does not report success merely because the request was accepted:
 it waits until the editor's active edited-scene root reports the requested path,
 or returns a timeout error if that confirmation never arrives. Pending scene
 opens are exempt from the ordinary five-second idle-peer cleanup so the full
