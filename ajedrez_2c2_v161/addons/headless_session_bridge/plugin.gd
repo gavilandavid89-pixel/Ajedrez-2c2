@@ -460,14 +460,31 @@ func _focus_inspector(raw_args: Variant) -> Dictionary:
 	var editor_selection := EditorInterface.get_selection()
 	if editor_selection == null:
 		return {"ok": false, "error": "editor_selection_unavailable"}
+	EditorInterface.distraction_free_mode = false
 	editor_selection.clear()
 	editor_selection.add_node(node)
 	EditorInterface.inspect_object(node)
+	var inspector := EditorInterface.get_inspector()
+	if inspector == null:
+		return {"ok": false, "error": "editor_inspector_unavailable"}
+	var current: Node = inspector
+	var dock_name := ""
+	var dock_visible := false
+	while current != null:
+		if current.has_method("make_visible"):
+			current.call("make_visible")
+			dock_name = str(current.name)
+			dock_visible = current.is_visible_in_tree()
+			break
+		current = current.get_parent()
 	return {
 		"ok": true,
 		"node_path": str(root.get_path_to(node)),
 		"node_type": node.get_class(),
-		"main_screen": main_screen
+		"main_screen": main_screen,
+		"inspector_visible": inspector.is_visible_in_tree(),
+		"inspector_dock": dock_name,
+		"dock_visible": dock_visible
 	}
 
 
