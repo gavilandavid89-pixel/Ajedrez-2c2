@@ -58,12 +58,19 @@ discovery when the editor disappears or stops responding. If the editor is
 reopened, it reads the new session token and reconnects. Stop the watcher with
 Ctrl+C or by terminating its process.
 
-The current plugin intentionally supports one active TCP peer at a time. The
-watcher and one-shot probe therefore cannot operate concurrently: stop the
-watcher before using a one-shot probe. This is a known architectural limitation,
-not a multi-client command broker. The next bridge milestone is to give one
-persistent operator connection both heartbeat and queued command/response
-handling, so commands do not compete with the watcher for the editor socket.
+The editor accepts multiple simultaneous TCP peers on localhost. The
+persistent watcher keeps its authenticated heartbeat connection open while
+one-shot command clients connect, send an allowlisted request, receive their
+response and disconnect. Each peer has an independent input buffer and idle
+timeout, so a command client cannot consume or corrupt the watcher's heartbeat
+response. This also allows independent operator processes to issue commands
+without taking over the persistent discovery/reconnect session.
+
+The current concurrency model is deliberately simple: each peer is processed
+on the editor's main thread, requests are handled sequentially, and the server
+does not promise parallel execution of editor mutations. The watcher remains
+the persistent liveness/reconnect process; probes are short-lived command
+clients.
 
 ## Boundaries
 
@@ -71,7 +78,7 @@ handling, so commands do not compete with the watcher for the editor socket.
 - Project fingerprint and random token are both checked.
 - Protocol is newline-delimited JSON with a version field.
 - No arbitrary code execution.
-- Idle peer connections are closed after five seconds without traffic.
+- Idle peer connections are closed after five seconds without traffic; the timeout and receive buffer are tracked independently per peer.\n- Multiple localhost peers may coexist; the persistent watcher and one-shot command clients do not compete for a socket.
 - Incoming buffered JSON lines are limited to 64 KiB; oversized requests are
   disconnected.
 - Command-level failures are propagated through the top-level `ok` response.
