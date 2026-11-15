@@ -205,6 +205,18 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			_marker_label.text = ""
 			_status_label.text = "Estado: cambio temporal revertido"
 			response["status"] = "marker_cleared"
+		"preview_status":
+			var preview_status_result := _preview_status()
+			response["ok"] = bool(preview_status_result.get("ok", false))
+			response["result"] = preview_status_result
+		"start_preview":
+			var preview_start_result := _start_preview(request.get("args", {}))
+			response["ok"] = bool(preview_start_result.get("ok", false))
+			response["result"] = preview_start_result
+		"stop_preview":
+			var preview_stop_result := _stop_preview()
+			response["ok"] = bool(preview_stop_result.get("ok", false))
+			response["result"] = preview_stop_result
 		"open_scene":
 			var open_result := _open_project_scene(request.get("args", {}))
 			if not bool(open_result.get("ok", false)):
@@ -1456,4 +1468,51 @@ func _read_capture_chunk(raw_args: Variant) -> Dictionary:
 		"eof": offset + bytes.size() >= file_size,
 		"encoding": "base64",
 		"data": Marshalls.raw_to_base64(bytes)
+	}
+
+
+# Runtime preview is controlled through EditorInterface, but remains a separate
+# game process. Only project-local scene files can be launched by this bridge.
+func _preview_status() -> Dictionary:
+	return {
+		"ok": true,
+		"running": EditorInterface.is_playing_scene(),
+		"scene_path": EditorInterface.get_playing_scene(),
+		"editor_pid": OS.get_process_id(),
+		"project_id": _project_id
+	}
+
+
+func _start_preview(raw_args: Variant) -> Dictionary:
+	if not raw_args is Dictionary:
+		return {"ok": false, "error": "invalid_arguments"}
+	var scene_path := str(raw_args.get("scene_path", ""))
+	if not scene_path.begins_with("res://") or scene_path.contains("..") or scene_path.contains("\\\\"):
+		return {"ok": false, "error": "invalid_scene_path"}
+	if not scene_path.ends_with(".tscn") or not ResourceLoader.exists(scene_path):
+		return {"ok": false, "error": "scene_not_found", "scene_path": scene_path}
+	if EditorInterface.is_playing_scene():
+		return {"ok": false, "error": "preview_already_running", "scene_path": EditorInterface.get_playing_scene()}
+	EditorInterface.play_custom_scene(scene_path)
+	return {
+		"ok": true,
+		"started": true,
+		"scene_path": scene_path,
+		"running": EditorInterface.is_playing_scene(),
+		"editor_pid": OS.get_process_id(),
+		"project_id": _project_id
+	}
+
+
+func _stop_preview() -> Dictionary:
+	var was_running := EditorInterface.is_playing_scene()
+	if was_running:
+		EditorInterface.stop_playing_scene()
+	return {
+		"ok": true,
+		"stopped": was_running,
+		"running": EditorInterface.is_playing_scene(),
+		"scene_path": EditorInterface.get_playing_scene(),
+		"editor_pid": OS.get_process_id(),
+		"project_id": _project_id
 	}
