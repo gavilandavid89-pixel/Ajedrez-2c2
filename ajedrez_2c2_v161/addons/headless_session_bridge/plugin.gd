@@ -621,15 +621,15 @@ func _validate_node_property(node: Node, key: String, raw_value: Variant) -> Dic
 			return {"ok": false, "error": "number_out_of_range", "property": key}
 		return {"ok": true, "value": number}
 	if key in ["collision_layer", "collision_mask"]:
-		if not raw_value is int or int(raw_value) < 0 or int(raw_value) > 4294967295:
+		if not (raw_value is int or raw_value is float) or not is_finite(float(raw_value)) or float(raw_value) != floorf(float(raw_value)) or float(raw_value) < 0.0 or float(raw_value) > 4294967295.0:
 			return {"ok": false, "error": "unsigned_32bit_integer_expected", "property": key}
 		return {"ok": true, "value": int(raw_value)}
 	if key == "z_index":
-		if not raw_value is int or int(raw_value) < -4096 or int(raw_value) > 4096:
+		if not (raw_value is int or raw_value is float) or not is_finite(float(raw_value)) or float(raw_value) != floorf(float(raw_value)) or float(raw_value) < -4096.0 or float(raw_value) > 4096.0:
 			return {"ok": false, "error": "integer_out_of_range", "property": key}
 		return {"ok": true, "value": int(raw_value)}
 	if key == "motion_mode":
-		if not raw_value is int or int(raw_value) not in [0, 1]:
+		if not (raw_value is int or raw_value is float) or not is_finite(float(raw_value)) or float(raw_value) != floorf(float(raw_value)) or int(raw_value) not in [0, 1]:
 			return {"ok": false, "error": "invalid_motion_mode", "property": key}
 		return {"ok": true, "value": int(raw_value)}
 	if key in ["visible", "input_pickable", "monitoring", "monitorable", "enabled", "collide_with_areas", "collide_with_bodies", "disabled", "one_way_collision"]:
