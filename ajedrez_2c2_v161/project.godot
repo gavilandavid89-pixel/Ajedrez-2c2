@@ -61,3 +61,7 @@ theme/custom="res://assets/ui_theme.tres"
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/headless_session_bridge/plugin.cfg")
