@@ -268,7 +268,9 @@ func _announce_when_ready() -> void:
 const ALLOWED_NODE_TYPES := [
 	"Node2D", "Control", "Sprite2D", "AnimatedSprite2D", "Label",
 	"RichTextLabel", "ColorRect", "Panel", "Button", "TextureRect",
-	"Marker2D", "Area2D", "CollisionShape2D"
+	"Marker2D", "Area2D", "StaticBody2D", "CharacterBody2D",
+	"RigidBody2D", "AnimatableBody2D", "CollisionShape2D",
+	"CollisionPolygon2D", "RayCast2D", "ShapeCast2D"
 ]
 const MAX_INSPECTED_NODES := 200
 const MAX_RESOURCE_ENTRIES := 300
@@ -338,6 +340,29 @@ func _inspect_node_properties(node: Node) -> Dictionary:
 		var area := node as Area2D
 		properties["monitoring"] = area.monitoring
 		properties["monitorable"] = area.monitorable
+	if node is CharacterBody2D:
+		var character_body := node as CharacterBody2D
+		properties["velocity"] = _vector2_to_json(character_body.velocity)
+		properties["up_direction"] = _vector2_to_json(character_body.up_direction)
+		properties["motion_mode"] = character_body.motion_mode
+		properties["floor_max_angle"] = character_body.floor_max_angle
+	if node is RayCast2D:
+		var ray_cast := node as RayCast2D
+		properties["enabled"] = ray_cast.enabled
+		properties["target_position"] = _vector2_to_json(ray_cast.target_position)
+		properties["collide_with_areas"] = ray_cast.collide_with_areas
+		properties["collide_with_bodies"] = ray_cast.collide_with_bodies
+	if node is ShapeCast2D:
+		var shape_cast := node as ShapeCast2D
+		properties["enabled"] = shape_cast.enabled
+		properties["target_position"] = _vector2_to_json(shape_cast.target_position)
+		properties["collide_with_areas"] = shape_cast.collide_with_areas
+		properties["collide_with_bodies"] = shape_cast.collide_with_bodies
+		properties["shape"] = _inspect_shape_resource(shape_cast.shape)
+	if node is CollisionPolygon2D:
+		var collision_polygon := node as CollisionPolygon2D
+		properties["disabled"] = collision_polygon.disabled
+		properties["polygon_point_count"] = collision_polygon.polygon.size()
 	if node is CollisionShape2D:
 		var collision_shape := node as CollisionShape2D
 		properties["disabled"] = collision_shape.disabled
