@@ -31,10 +31,16 @@ godot --headless --path . --script res://tools/headless_bridge/bridge_probe.gd -
 godot --headless --path . --script res://tools/headless_bridge/bridge_probe.gd -- clear_test_marker
 ```
 
-Only the allowlisted commands `ping`, `show_test_marker` and
-`clear_test_marker` are accepted. Requests are JSON lines containing the
-protocol version, project fingerprint and random session token. No arbitrary
-GDScript, shell commands or eval payloads are accepted.
+Commands are explicitly allowlisted: `ping`, `show_test_marker`,
+`clear_test_marker`, `inspect_scene`, `list_project_resources` and `add_node`.
+The inspection commands return a bounded scene-tree snapshot (maximum 200
+nodes, depth 8) and a bounded project-resource inventory (maximum 300 entries).
+`add_node` accepts only a fixed set of common 2D/UI node classes, adds the node
+to the currently edited scene through the editor undo manager, and does not
+save the scene automatically. The user can inspect and undo the change in the
+editor. Requests are JSON lines containing the protocol version, project
+fingerprint and random session token. No arbitrary GDScript, shell commands,
+file writes, or eval payloads are accepted.
 
 ## Persistent discovery and reconnect
 
@@ -62,7 +68,9 @@ multiplex interactive commands over that same authenticated connection.
 - Protocol is newline-delimited JSON with a version field.
 - No arbitrary code execution.
 - Idle peer connections are closed after five seconds without traffic.
-- Current proof commands change only a temporary editor dock label; they do
-  not edit or save game scenes or resources.
+- `add_node` is the only scene-mutating command and is limited to the current
+  edited scene, a fixed node-type allowlist, and the editor undo history.
+- Scene/resource inspection is bounded to prevent unbounded responses.
+- No command saves a scene or overwrites project assets automatically.
 - The bridge is an experimental QA/operator interface, not a production
   remote-control or multi-user service.
