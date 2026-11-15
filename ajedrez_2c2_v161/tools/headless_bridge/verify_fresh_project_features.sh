@@ -100,3 +100,18 @@ sleep 2
 run_probe inspect_selection | tee artifacts/inspector-selection-after-focus.log
 grep -q '"name":"SandboxNode"' artifacts/inspector-selection-after-focus.log
 echo "FRESH_PROJECT_VISIBLE_INSPECTOR_FOCUS_PASS"
+
+# Launch and stop the real game preview through the editor API.
+run_probe preview_status | tee artifacts/preview-status-before.log
+grep -q '"running":false' artifacts/preview-status-before.log
+run_probe start_preview '{"scene_path":"res://main.tscn"}' | tee artifacts/preview-start.log
+grep -q '"started":true' artifacts/preview-start.log
+grep -q '"running":true' artifacts/preview-start.log
+run_probe preview_status | tee artifacts/preview-status-running.log
+grep -q '"running":true' artifacts/preview-status-running.log
+run_probe stop_preview | tee artifacts/preview-stop.log
+grep -q '"stopped":true' artifacts/preview-stop.log
+grep -q '"running":false' artifacts/preview-stop.log
+run_probe preview_status | tee artifacts/preview-status-after.log
+grep -q '"running":false' artifacts/preview-status-after.log
+echo "FRESH_PROJECT_PREVIEW_LIFECYCLE_PASS"
