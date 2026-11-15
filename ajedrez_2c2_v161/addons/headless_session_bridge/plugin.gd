@@ -1487,7 +1487,7 @@ func _start_preview(raw_args: Variant) -> Dictionary:
 	if not raw_args is Dictionary:
 		return {"ok": false, "error": "invalid_arguments"}
 	var scene_path := str(raw_args.get("scene_path", ""))
-	if not scene_path.begins_with("res://") or scene_path.contains("..") or scene_path.contains("\\\\"):
+	if not scene_path.begins_with("res://") or scene_path.contains("..") or scene_path.contains("\\"):
 		return {"ok": false, "error": "invalid_scene_path"}
 	if not scene_path.ends_with(".tscn") or not ResourceLoader.exists(scene_path):
 		return {"ok": false, "error": "scene_not_found", "scene_path": scene_path}
