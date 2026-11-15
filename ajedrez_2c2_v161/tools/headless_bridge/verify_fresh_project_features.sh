@@ -109,6 +109,10 @@ grep -q '"started":true' artifacts/preview-start.log
 grep -q '"running":true' artifacts/preview-start.log
 run_probe preview_status | tee artifacts/preview-status-running.log
 grep -q '"running":true' artifacts/preview-status-running.log
+run_probe capture_desktop_screenshot | tee artifacts/preview-desktop-capture.log
+grep -q '"source":"actual_display"' artifacts/preview-desktop-capture.log
+grep -q '"includes_preview_when_visible":true' artifacts/preview-desktop-capture.log
+echo "FRESH_PROJECT_PREVIEW_DESKTOP_CAPTURE_PASS"
 run_probe stop_preview | tee artifacts/preview-stop.log
 grep -q '"stopped":true' artifacts/preview-stop.log
 grep -q '"running":false' artifacts/preview-stop.log
