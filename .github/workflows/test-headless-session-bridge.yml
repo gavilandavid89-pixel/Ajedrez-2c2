@@ -45,7 +45,7 @@ jobs:
           GODOT="Godot_v4.7.2-stable_linux.x86_64"
           PROJECT="ajedrez_2c2_v161"
           mkdir -p artifacts
-          "$GODOT" --headless --editor --path "$PROJECT" --quit > artifacts/import.log 2>&1
+          "$GODOT" --headless --editor --path "$PROJECT" --import --quit > artifacts/import.log 2>&1
           "$GODOT" --headless --path "$PROJECT" --script res://tests/run_tests.gd > artifacts/project-tests.log 2>&1
           if grep -E "SCRIPT ERROR:|Parse Error:|Failed loading resource:|ERROR:.*(does not exist|Could not load|No loader found)" artifacts/import.log artifacts/project-tests.log; then
             echo "Godot import or QA script validation reported resource/script errors."
