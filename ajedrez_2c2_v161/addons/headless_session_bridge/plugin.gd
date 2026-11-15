@@ -12,6 +12,7 @@ var _token := ""
 var _project_id := ""
 var _registry_absolute_path := ""
 var _status_label: Label
+var _marker_label: Label
 var _panel: VBoxContainer
 
 
@@ -30,6 +31,10 @@ func _enter_tree() -> void:
 	_status_label.text = "Estado: esperando operador"
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_panel.add_child(_status_label)
+	_marker_label = Label.new()
+	_marker_label.text = ""
+	_marker_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_panel.add_child(_marker_label)
 	var hint := Label.new()
 	hint.text = "Solo acepta ping, show_test_marker y clear_test_marker."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -73,7 +78,7 @@ func _process(_delta: float) -> void:
 	if _peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
 		_peer = null
 		_buffer = ""
-		_status_label.text = "Estado: operador desconectado"
+		_status_label.text = "Estado: operador desconectado (última orden conservada)"
 		return
 
 	var available := _peer.get_available_bytes()
@@ -116,10 +121,12 @@ func _handle_request(line: String) -> void:
 			_status_label.text = "Estado: conectado (ping)"
 			response["status"] = "alive"
 		"show_test_marker":
-			_status_label.text = "PRUEBA HEADLESS 001 — CAMBIO RECIBIDO"
+			_marker_label.text = "PRUEBA HEADLESS 001 — CAMBIO RECIBIDO"
+			_status_label.text = "Estado: orden recibida"
 			response["status"] = "marker_visible"
 		"clear_test_marker":
-			_status_label.text = "Estado: conectado; cambio temporal revertido"
+			_marker_label.text = ""
+			_status_label.text = "Estado: cambio temporal revertido"
 			response["status"] = "marker_cleared"
 		_:
 			response = {"ok": false, "error": "command_not_allowed"}
