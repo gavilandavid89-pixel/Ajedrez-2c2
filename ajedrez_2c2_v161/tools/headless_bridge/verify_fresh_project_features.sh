@@ -44,6 +44,9 @@ if run_probe open_scene '{"path":"res://../outside.tscn"}' > artifacts/invalid-s
 else
   echo "FRESH_PROJECT_SCENE_PATH_GUARD_PASS"
 fi
+run_probe inspect_undo_history | tee artifacts/undo-history-inspection.log
+sed -n 's/^BRIDGE_TEST_PASS //p' artifacts/undo-history-inspection.log | tail -n 1 | jq -e '.result.has_undo == true and (.result.current_action_name | startswith("Headless Bridge:"))' >/dev/null
+echo "FRESH_PROJECT_EDITOR_UNDO_HISTORY_PASS"
 run_probe open_scene '{"path":"res://main.tscn"}' | tee artifacts/open-scene-response.log
 grep -q 'BRIDGE_SCENE_OPEN_CONFIRMED res://main.tscn' artifacts/open-scene-response.log
 echo "FRESH_PROJECT_OPEN_SCENE_PASS"
