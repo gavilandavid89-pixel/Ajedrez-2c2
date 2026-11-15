@@ -105,7 +105,9 @@ jobs:
           test -s artifacts/editor-with-headless-marker.png
           test -s artifacts/editor-after-revert.png
           changed_pixels=$(compare -metric AE artifacts/editor-with-headless-marker.png artifacts/editor-after-revert.png null: 2>&1 || true)
-          changed_pixels="${changed_pixels%%$'\n'*}"
+          changed_pixels="${changed_pixels%% *}"
+          cp /tmp/session-watcher.log artifacts/session-watcher.log
+          cp /tmp/godot-editor.log artifacts/godot-editor.log
           if ! [[ "$changed_pixels" =~ ^[0-9]+$ ]] || [ "$changed_pixels" -le 0 ]; then
             echo "Screenshot verification failed: no visible UI difference detected."
             exit 1
@@ -113,9 +115,6 @@ jobs:
           echo "SCREENSHOT_DIFF_PASS changed_pixels=$changed_pixels"
           grep -q "SESSION_CONNECTED" /tmp/session-watcher.log
           grep -q "SESSION_DISCONNECTED" /tmp/session-watcher.log
-          grep -q "BRIDGE_IDLE_TIMEOUT_PASS" /tmp/session-watcher.log || true
-          cp /tmp/session-watcher.log artifacts/session-watcher.log
-          cp /tmp/godot-editor.log artifacts/godot-editor.log
           SCRIPT
 
       - name: Upload editor screenshots and logs
