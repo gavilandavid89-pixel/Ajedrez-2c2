@@ -22,6 +22,7 @@ echo "FRESH_PROJECT_COLLISION_SHAPE_PASS"
 run_probe focus_inspector '{"node_path":"SandboxNode","main_screen":"2D"}' | tee artifacts/inspector-focus-response.log
 grep -q '"inspector_visible":true' artifacts/inspector-focus-response.log
 grep -q '"dock_visible":true' artifacts/inspector-focus-response.log
+sed -n 's/^BRIDGE_TEST_PASS //p' artifacts/inspector-focus-response.log | tail -n 1 | jq -e '.result.dock_size.x > 0 and .result.dock_size.y > 0' >/dev/null
 sleep 2
 run_probe inspect_selection | tee artifacts/inspector-selection-after-focus.log
 grep -q '"name":"SandboxNode"' artifacts/inspector-selection-after-focus.log
