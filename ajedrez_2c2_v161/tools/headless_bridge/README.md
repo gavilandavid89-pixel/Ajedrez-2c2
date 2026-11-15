@@ -39,7 +39,10 @@ and `add_node`. `open_scene` accepts a JSON object such as
 (maximum 200 nodes, depth 8) and a bounded project-resource inventory (maximum
 300 entries). `open_scene` does not report success merely because the request was accepted:
 it waits until the editor's active edited-scene root reports the requested path,
-or returns a timeout error if that confirmation never arrives. `add_node`
+or returns a timeout error if that confirmation never arrives. Pending scene
+opens are exempt from the ordinary five-second idle-peer cleanup so the full
+ten-second scene confirmation window remains available; the one-shot probe
+waits up to fifteen seconds for the definitive response. `add_node`
 accepts only a fixed set of common 2D/UI node classes, adds the node to the
 currently edited scene through the editor undo manager, and does not save the
 scene automatically. The user can inspect and undo the change in the editor. Requests are JSON lines containing the protocol version,
