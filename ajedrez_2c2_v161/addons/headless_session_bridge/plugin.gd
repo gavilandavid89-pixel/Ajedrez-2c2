@@ -109,9 +109,9 @@ func _process(_delta: float) -> void:
 			_remove_client(index)
 			continue
 
-		while str(client["buffer"]).contains("\\n"):
+		while str(client["buffer"]).contains("\n"):
 			var buffer_text := str(client["buffer"])
-			var split_at := buffer_text.find("\\n")
+			var split_at := buffer_text.find("\n")
 			var line := buffer_text.substr(0, split_at).strip_edges()
 			client["buffer"] = buffer_text.substr(split_at + 1)
 			if not line.is_empty():
@@ -180,7 +180,7 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 
 func _send_response(peer: StreamPeerTCP, payload: Dictionary) -> void:
 	if peer != null and peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
-		peer.put_data((JSON.stringify(payload) + "\\n").to_utf8_buffer())
+		peer.put_data((JSON.stringify(payload) + "\n").to_utf8_buffer())
 
 
 func _write_registry() -> void:
