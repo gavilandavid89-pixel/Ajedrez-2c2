@@ -237,6 +237,10 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var capture_result := _capture_editor_screenshot()
 			response["ok"] = bool(capture_result.get("ok", false))
 			response["result"] = capture_result
+		"capture_desktop_screenshot":
+			var desktop_capture_result := _capture_desktop_screenshot()
+			response["ok"] = bool(desktop_capture_result.get("ok", false))
+			response["result"] = desktop_capture_result
 		"start_editor_video":
 			var video_start_result := _start_editor_video(request.get("args", {}))
 			response["ok"] = bool(video_start_result.get("ok", false))
@@ -1307,6 +1311,34 @@ func _capture_editor_screenshot() -> Dictionary:
 		"source": "actual_editor_window",
 		"window_rect": captured["window_rect"],
 		"screen": captured["screen"]
+	}
+
+
+func _capture_desktop_screenshot() -> Dictionary:
+	if not _video_recording.is_empty():
+		return {"ok": false, "error": "video_recording_in_progress"}
+	if not _ensure_capture_directory():
+		return {"ok": false, "error": "capture_directory_unavailable"}
+	var screen_index := DisplayServer.window_get_current_screen()
+	var image := DisplayServer.screen_get_image(screen_index)
+	if image == null or image.is_empty():
+		return {"ok": false, "error": "screen_capture_unavailable"}
+	_capture_sequence += 1
+	var file_name := "desktop_%d_%d.png" % [OS.get_process_id(), _capture_sequence]
+	var capture_path := CAPTURE_DIRECTORY.path_join(file_name)
+	var absolute_path := ProjectSettings.globalize_path(capture_path)
+	var error := image.save_png(absolute_path)
+	if error != OK:
+		return {"ok": false, "error": "screenshot_save_failed", "code": error}
+	return {
+		"ok": true,
+		"capture_path": absolute_path,
+		"file_size": _get_capture_file_size(absolute_path),
+		"width": image.get_width(),
+		"height": image.get_height(),
+		"source": "actual_display",
+		"screen": screen_index,
+		"includes_preview_when_visible": true
 	}
 
 
