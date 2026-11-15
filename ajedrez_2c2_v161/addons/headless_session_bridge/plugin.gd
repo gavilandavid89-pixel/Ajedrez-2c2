@@ -298,7 +298,7 @@ func _serialize_node(node: Node, scene_root: Node, depth: int, budget: Dictionar
 		# context from the editor's own scene tree and must not be used as an edit target.
 		"path": str(scene_root.get_path_to(node)),
 		"runtime_path": str(node.get_path()),
-		"groups": node.get_groups(),
+		"groups": _get_group_names(node),
 		"child_count": node.get_child_count(),
 		"properties": _inspect_node_properties(node),
 		"children": []
@@ -350,15 +350,25 @@ func _inspect_shape_resource(shape: Shape2D) -> Dictionary:
 	if shape == null:
 		return {"assigned": false}
 	var result := {"assigned": true, "type": shape.get_class()}
+	var available_properties: Dictionary = {}
+	for property_info in shape.get_property_list():
+		available_properties[str(property_info.get("name", ""))] = true
 	for property_name in ["radius", "height", "size", "a", "b", "extents"]:
-		var value: Variant = shape.get(property_name)
-		if value == null:
+		if not available_properties.has(property_name):
 			continue
+		var value: Variant = shape.get(property_name)
 		if value is Vector2:
 			result[property_name] = _vector2_to_json(value)
 		elif value is float or value is int:
 			result[property_name] = value
 	return result
+
+
+func _get_group_names(node: Node) -> Array[String]:
+	var names: Array[String] = []
+	for group_name in node.get_groups():
+		names.append(str(group_name))
+	return names
 
 
 func _vector2_to_json(value: Vector2) -> Dictionary:
