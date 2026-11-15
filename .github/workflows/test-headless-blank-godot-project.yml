@@ -144,11 +144,13 @@ jobs:
           xdotool key Return
           sleep 4
           import -window root -silent "$GITHUB_WORKSPACE/artifacts/editor-with-root-node.png"
-          # Open the native Save Scene dialog for the next calibration pass.
+          # The Save Scene dialog focuses its File field with the default node.tscn selected.
           xdotool key ctrl+s
-          sleep 3
-          import -window root -silent "$GITHUB_WORKSPACE/artifacts/save-scene-dialog.png"
-          exit 0
+          sleep 2
+          xdotool key ctrl+a
+          xdotool type --clearmodifiers "main.tscn"
+          xdotool key Return
+          sleep 4
           if [ ! -f "$PROJECT/main.tscn" ]; then
             import -window root -silent "$GITHUB_WORKSPACE/artifacts/empty-scene-save-failed.png" || true
             cat /tmp/godot-sandbox-editor.log
