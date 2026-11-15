@@ -12,6 +12,7 @@ var _token := ""
 var _project_id := ""
 var _registry_absolute_path := ""
 var _status_label: Label
+var _panel: VBoxContainer
 
 
 func _enter_tree() -> void:
@@ -19,21 +20,22 @@ func _enter_tree() -> void:
 	_token = Crypto.new().generate_random_bytes(32).hex_encode()
 	_registry_absolute_path = ProjectSettings.globalize_path(REGISTRY_PATH)
 
-	var panel := VBoxContainer.new()
-	panel.name = "HeadlessBridge"
-	panel.custom_minimum_size = Vector2(220, 90)
+	_panel = VBoxContainer.new()
+	_panel.name = "HeadlessBridge"
+	_panel.custom_minimum_size = Vector2(260, 110)
 	var heading := Label.new()
 	heading.text = "HEADLESS SESSION BRIDGE"
-	panel.add_child(heading)
+	_panel.add_child(heading)
 	_status_label = Label.new()
 	_status_label.text = "Estado: esperando operador"
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	panel.add_child(_status_label)
+	_panel.add_child(_status_label)
 	var hint := Label.new()
 	hint.text = "Solo acepta ping, show_test_marker y clear_test_marker."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	panel.add_child(hint)
-	add_control_to_dock(DOCK_SLOT_RIGHT_UL, panel)
+	_panel.add_child(hint)
+	add_control_to_bottom_panel(_panel, "Headless Bridge")
+	make_bottom_panel_item_visible(_panel)
 
 	_server = TCPServer.new()
 	var error := _server.listen(BRIDGE_PORT, "127.0.0.1")
@@ -42,8 +44,8 @@ func _enter_tree() -> void:
 		push_error("Headless bridge could not listen on 127.0.0.1:%d" % BRIDGE_PORT)
 		return
 
-	_write_registry()
 	set_process(true)
+	call_deferred("_announce_when_ready")
 
 
 func _exit_tree() -> void:
@@ -53,12 +55,9 @@ func _exit_tree() -> void:
 	if _peer != null:
 		_peer.disconnect_from_host()
 	_remove_own_registry()
-	if _status_label != null and is_instance_valid(_status_label):
-		var dock := _status_label.get_parent()
-		while dock != null and not dock is VBoxContainer:
-			dock = dock.get_parent()
-		if dock != null:
-			remove_control_from_docks(dock)
+	if _panel != null and is_instance_valid(_panel):
+		remove_control_from_bottom_panel(_panel)
+		_panel.queue_free()
 
 
 func _process(_delta: float) -> void:
@@ -154,3 +153,9 @@ func _remove_own_registry() -> void:
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(REGISTRY_PATH))
 	if data is Dictionary and str(data.get("token", "")) == _token:
 		DirAccess.remove_absolute(_registry_absolute_path)
+
+
+func _announce_when_ready() -> void:
+	await get_tree().create_timer(2.5).timeout
+	if is_inside_tree() and _server != null and _server.is_listening():
+		_write_registry()
