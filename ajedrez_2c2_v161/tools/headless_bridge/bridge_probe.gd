@@ -13,10 +13,17 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var action := "show_test_marker"
-	var args := OS.get_cmdline_user_args()
-	if not args.is_empty():
-		action = str(args[0])
-	if not ["ping", "show_test_marker", "clear_test_marker"].has(action):
+	var user_args := OS.get_cmdline_user_args()
+	var command_args: Dictionary = {}
+	if not user_args.is_empty():
+		action = str(user_args[0])
+	if user_args.size() > 1:
+		var parsed_args: Variant = JSON.parse_string(str(user_args[1]))
+		if not parsed_args is Dictionary:
+			_fail("Command arguments must be a JSON object.")
+			return
+		command_args = parsed_args
+	if not ["ping", "show_test_marker", "clear_test_marker", "open_scene", "inspect_scene", "list_project_resources", "add_node"].has(action):
 		_fail("Unsupported action: " + action)
 		return
 
@@ -50,7 +57,8 @@ func _run() -> void:
 		"protocol": PROTOCOL_VERSION,
 		"token": str(registry.get("token", "")),
 		"project_id": expected_project_id,
-		"command": action
+		"command": action,
+		"args": command_args
 	}
 	peer.put_data((JSON.stringify(request) + "\n").to_utf8_buffer())
 	var response_text := ""
