@@ -229,6 +229,10 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var property_result := _set_node_properties(request.get("args", {}))
 			response["ok"] = bool(property_result.get("ok", false))
 			response["result"] = property_result
+		"configure_collision_shape":
+			var shape_result := _configure_collision_shape(request.get("args", {}))
+			response["ok"] = bool(shape_result.get("ok", false))
+			response["result"] = shape_result
 		_:
 			response = {"ok": false, "error": "command_not_allowed"}
 	_send_response(peer, response)
@@ -464,6 +468,90 @@ func _add_node_to_edited_scene(raw_args: Variant) -> Dictionary:
 	undo_redo.commit_action()
 	return {"ok": true, "node_path": str(root.get_path_to(new_node)), "type": type_name, "name": node_name}
 
+
+
+const COLLISION_SHAPE_TYPES := ["CircleShape2D", "RectangleShape2D", "CapsuleShape2D", "SegmentShape2D"]
+
+
+func _configure_collision_shape(raw_args: Variant) -> Dictionary:
+	if not raw_args is Dictionary:
+		return {"ok": false, "error": "invalid_args"}
+	var args: Dictionary = raw_args
+	var root := EditorInterface.get_edited_scene_root()
+	if root == null:
+		return {"ok": false, "error": "no_edited_scene"}
+	var node_path := str(args.get("node_path", ""))
+	if node_path.begins_with("/") or node_path == ".." or node_path.contains("../") or node_path.contains("/.."):
+		return {"ok": false, "error": "invalid_node_path"}
+	var node: Node = root if node_path.is_empty() or node_path == "." else root.get_node_or_null(NodePath(node_path))
+	if not node is CollisionShape2D:
+		return {"ok": false, "error": "collision_shape_node_required"}
+	var shape_type := str(args.get("shape_type", ""))
+	if shape_type not in COLLISION_SHAPE_TYPES:
+		return {"ok": false, "error": "shape_type_not_allowed"}
+	var raw_dimensions: Variant = args.get("dimensions", {})
+	if not raw_dimensions is Dictionary:
+		return {"ok": false, "error": "dimensions_required"}
+	var shape := ClassDB.instantiate(shape_type) as Shape2D
+	if shape == null:
+		return {"ok": false, "error": "shape_creation_failed"}
+	shape.resource_local_to_scene = true
+	var dimension_error := _apply_shape_dimensions(shape, shape_type, raw_dimensions)
+	if not dimension_error.is_empty():
+		return {"ok": false, "error": dimension_error}
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Headless Bridge: Configure collision shape " + str(node.name))
+	undo_redo.add_do_property(node, "shape", shape)
+	undo_redo.add_undo_property(node, "shape", node.shape)
+	undo_redo.commit_action()
+	return {"ok": true, "node_path": str(root.get_path_to(node)), "shape": _inspect_shape_resource(shape)}
+
+
+func _apply_shape_dimensions(shape: Shape2D, shape_type: String, dimensions: Dictionary) -> String:
+	match shape_type:
+		"CircleShape2D":
+			if not dimensions.has("radius"):
+				return "radius_required"
+			var radius := float(dimensions["radius"])
+			if not is_finite(radius) or radius <= 0.0 or radius > 1000000.0:
+				return "invalid_radius"
+			(shape as CircleShape2D).radius = radius
+		"RectangleShape2D":
+			if not dimensions.has("size"):
+				return "size_required"
+			var size := _parse_bounded_vector2(dimensions["size"])
+			if size == null or size.x <= 0.0 or size.y <= 0.0:
+				return "invalid_size"
+			(shape as RectangleShape2D).size = size
+		"CapsuleShape2D":
+			if not dimensions.has("radius") or not dimensions.has("height"):
+				return "radius_and_height_required"
+			var capsule_radius := float(dimensions["radius"])
+			var capsule_height := float(dimensions["height"])
+			if not is_finite(capsule_radius) or not is_finite(capsule_height) or capsule_radius <= 0.0 or capsule_height < capsule_radius * 2.0 or capsule_height > 1000000.0:
+				return "invalid_capsule_dimensions"
+			(shape as CapsuleShape2D).radius = capsule_radius
+			(shape as CapsuleShape2D).height = capsule_height
+		"SegmentShape2D":
+			if not dimensions.has("a") or not dimensions.has("b"):
+				return "segment_points_required"
+			var point_a := _parse_bounded_vector2(dimensions["a"])
+			var point_b := _parse_bounded_vector2(dimensions["b"])
+			if point_a == null or point_b == null or point_a.is_equal_approx(point_b):
+				return "invalid_segment_points"
+			(shape as SegmentShape2D).a = point_a
+			(shape as SegmentShape2D).b = point_b
+	return ""
+
+
+func _parse_bounded_vector2(raw_value: Variant) -> Variant:
+	if not raw_value is Dictionary or not raw_value.has("x") or not raw_value.has("y"):
+		return null
+	var x := float(raw_value["x"])
+	var y := float(raw_value["y"])
+	if not is_finite(x) or not is_finite(y) or absf(x) > 1000000.0 or absf(y) > 1000000.0:
+		return null
+	return Vector2(x, y)
 
 
 const NODE_PROPERTY_ALLOWLIST := {
