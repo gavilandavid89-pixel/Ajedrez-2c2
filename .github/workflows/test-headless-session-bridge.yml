@@ -168,6 +168,18 @@ jobs:
           grep -q '"source":"actual_editor_window"' artifacts/editor-video-stop.json
           grep -q '"frames":' artifacts/editor-video-stop.json
           grep -q '"file_size":' artifacts/editor-video-stop.json
+          video_path=$(python3 -c 'import json; print(json.load(open("artifacts/editor-video-stop.json"))["result"]["video_path"])')
+          ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1 "$video_path" | tee artifacts/editor-video-probe.txt
+          grep -q 'codec_name=h264' artifacts/editor-video-probe.txt
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- get_editor_video_status | tee artifacts/editor-video-status.json
+          grep -q '"video_path":' artifacts/editor-video-status.json
+          printf -v video_chunk_args '{"path":"%s","offset":0,"length":1024}' "$video_path"
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- read_capture_chunk "$video_chunk_args" | tee artifacts/editor-video-chunk.json
+          grep -q '"encoding":"base64"' artifacts/editor-video-chunk.json
+          if "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- read_capture_chunk '{"path":"/etc/passwd","offset":0,"length":16}'; then
+            echo "Capture bridge accepted a path outside its capture directory."
+            exit 1
+          fi
           echo "REAL_EDITOR_VIDEO_CAPTURE_PASS"
           if grep -q '"path":"/root/' artifacts/scene-inspection.json; then
             echo "Scene inspection leaked an editor runtime path into the stable scene path field."
