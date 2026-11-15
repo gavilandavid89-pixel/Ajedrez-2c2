@@ -244,6 +244,10 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var selection_result := _inspect_editor_selection()
 			response["ok"] = bool(selection_result.get("ok", false))
 			response["result"] = selection_result
+		"focus_inspector":
+			var focus_result := _focus_inspector(request.get("args", {}))
+			response["ok"] = bool(focus_result.get("ok", false))
+			response["result"] = focus_result
 		"inspect_project_settings":
 			var settings_result := _inspect_project_settings()
 			response["ok"] = bool(settings_result.get("ok", false))
@@ -432,6 +436,38 @@ func _inspect_editor_settings() -> Dictionary:
 		"truncated": truncated,
 		"scope": EDITOR_SETTING_PREFIXES,
 		"warning": "These preferences belong to the editor installation, not the project."
+	}
+
+
+func _focus_inspector(raw_args: Variant) -> Dictionary:
+	if not raw_args is Dictionary:
+		return {"ok": false, "error": "invalid_args"}
+	var args: Dictionary = raw_args
+	var root := EditorInterface.get_edited_scene_root()
+	if root == null:
+		return {"ok": false, "error": "no_edited_scene"}
+	var node_path := str(args.get("node_path", "."))
+	if node_path.begins_with("/") or node_path == ".." or node_path.contains("../") or node_path.contains("/.."):
+		return {"ok": false, "error": "invalid_node_path"}
+	var node: Node = root if node_path.is_empty() or node_path == "." else root.get_node_or_null(NodePath(node_path))
+	if node == null:
+		return {"ok": false, "error": "node_not_found"}
+	var main_screen := str(args.get("main_screen", ""))
+	if not main_screen.is_empty():
+		if main_screen not in ["2D", "3D", "Script", "AssetLib"]:
+			return {"ok": false, "error": "main_screen_not_allowed"}
+		EditorInterface.set_main_screen_editor(main_screen)
+	var editor_selection := EditorInterface.get_selection()
+	if editor_selection == null:
+		return {"ok": false, "error": "editor_selection_unavailable"}
+	editor_selection.clear()
+	editor_selection.add_node(node)
+	EditorInterface.inspect_object(node)
+	return {
+		"ok": true,
+		"node_path": str(root.get_path_to(node)),
+		"node_type": node.get_class(),
+		"main_screen": main_screen
 	}
 
 
