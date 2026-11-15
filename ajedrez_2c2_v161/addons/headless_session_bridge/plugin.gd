@@ -137,6 +137,14 @@ func _handle_request(line: String) -> void:
 			_marker_label.text = ""
 			_status_label.text = "Estado: cambio temporal revertido"
 			response["status"] = "marker_cleared"
+		"inspect_scene":
+			response["result"] = _inspect_edited_scene()
+		"list_project_resources":
+			response["result"] = _list_project_resources()
+		"add_node":
+			var result := _add_node_to_edited_scene(request.get("args", {}))
+			response["ok"] = bool(result.get("ok", false))
+			response["result"] = result
 		_:
 			response = {"ok": false, "error": "command_not_allowed"}
 	_send_response(response)
@@ -175,3 +183,111 @@ func _announce_when_ready() -> void:
 	await get_tree().create_timer(2.5).timeout
 	if is_inside_tree() and _server != null and _server.is_listening():
 		_write_registry()
+
+
+const ALLOWED_NODE_TYPES := [
+	"Node2D", "Control", "Sprite2D", "AnimatedSprite2D", "Label",
+	"RichTextLabel", "ColorRect", "Panel", "Button", "TextureRect",
+	"Marker2D", "Area2D", "CollisionShape2D"
+]
+const MAX_INSPECTED_NODES := 200
+const MAX_RESOURCE_ENTRIES := 300
+
+
+func _inspect_edited_scene() -> Dictionary:
+	var root := EditorInterface.get_edited_scene_root()
+	if root == null:
+		return {"ok": false, "error": "no_edited_scene"}
+	var budget := {"remaining": MAX_INSPECTED_NODES}
+	return {
+		"ok": true,
+		"scene_path": root.scene_file_path,
+		"root": _serialize_node(root, 0, budget),
+		"truncated": int(budget["remaining"]) <= 0
+	}
+
+
+func _serialize_node(node: Node, depth: int, budget: Dictionary) -> Dictionary:
+	if int(budget["remaining"]) <= 0:
+		return {"truncated": true}
+	budget["remaining"] = int(budget["remaining"]) - 1
+	var result := {
+		"name": str(node.name),
+		"type": node.get_class(),
+		"path": str(node.get_path()),
+		"child_count": node.get_child_count(),
+		"children": []
+	}
+	if depth >= 8:
+		result["truncated"] = node.get_child_count() > 0
+		return result
+	var children: Array = []
+	for child in node.get_children():
+		if int(budget["remaining"]) <= 0:
+			break
+		children.append(_serialize_node(child, depth + 1, budget))
+	result["children"] = children
+	if children.size() < node.get_child_count():
+		result["truncated"] = true
+	return result
+
+
+func _list_project_resources() -> Dictionary:
+	var entries: Array[String] = []
+	_collect_resources("res://", entries)
+	return {"ok": true, "entries": entries, "truncated": entries.size() >= MAX_RESOURCE_ENTRIES}
+
+
+func _collect_resources(path: String, entries: Array[String]) -> void:
+	if entries.size() >= MAX_RESOURCE_ENTRIES:
+		return
+	var directory := DirAccess.open(path)
+	if directory == null:
+		return
+	directory.list_dir_begin()
+	var item := directory.get_next()
+	while not item.is_empty() and entries.size() < MAX_RESOURCE_ENTRIES:
+		if item.begins_with(".") or item == "addons":
+			item = directory.get_next()
+			continue
+		var child_path := path.path_join(item)
+		if directory.current_is_dir():
+			_collect_resources(child_path, entries)
+		elif item.get_extension().to_lower() in ["tscn", "tres", "gd", "png", "webp", "svg", "ogg", "wav", "json"]:
+			entries.append(child_path)
+		item = directory.get_next()
+	directory.list_dir_end()
+
+
+func _add_node_to_edited_scene(raw_args: Variant) -> Dictionary:
+	if not raw_args is Dictionary:
+		return {"ok": false, "error": "invalid_args"}
+	var args: Dictionary = raw_args
+	var root := EditorInterface.get_edited_scene_root()
+	if root == null:
+		return {"ok": false, "error": "no_edited_scene"}
+	var type_name := str(args.get("type", ""))
+	if type_name not in ALLOWED_NODE_TYPES:
+		return {"ok": false, "error": "node_type_not_allowed"}
+	var parent_path := str(args.get("parent_path", ""))
+	if parent_path.begins_with("/") or parent_path.contains(".."):
+		return {"ok": false, "error": "invalid_parent_path"}
+	var parent: Node = root if parent_path.is_empty() else root.get_node_or_null(NodePath(parent_path))
+	if parent == null:
+		return {"ok": false, "error": "parent_not_found"}
+	var node_name := str(args.get("name", type_name))
+	if node_name.is_empty() or node_name.contains("/") or node_name.contains(":") or node_name == "." or node_name == "..":
+		return {"ok": false, "error": "invalid_node_name"}
+	var instance := ClassDB.instantiate(type_name)
+	if not instance is Node:
+		return {"ok": false, "error": "node_creation_failed"}
+	var new_node: Node = instance
+	new_node.name = node_name
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Headless Bridge: Add " + node_name)
+	undo_redo.add_do_method(parent, "add_child", new_node)
+	undo_redo.add_do_method(new_node, "set_owner", root)
+	undo_redo.add_undo_method(parent, "remove_child", new_node)
+	undo_redo.add_undo_method(new_node, "set_owner", null)
+	undo_redo.commit_action()
+	return {"ok": true, "node_path": str(root.get_path_to(new_node)), "type": type_name, "name": node_name}
