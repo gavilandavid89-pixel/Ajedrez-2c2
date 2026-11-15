@@ -65,18 +65,17 @@ jobs:
           sleep 2
           xdotool mousemove --sync 264 159 click 1
           sleep 2
-          import -window root -silent "$GITHUB_WORKSPACE/artifacts/project-manager-new-project-dialog.png"
-          exit 0
+          # Fill the native Project Name and Project Path fields explicitly.
+          xdotool mousemove --sync 760 279 click 1
           xdotool key ctrl+a
           xdotool type --clearmodifiers "Bridge Sandbox"
-          xdotool key Tab
+          xdotool mousemove --sync 700 349 click 1
           xdotool key ctrl+a
           xdotool type --clearmodifiers "$PROJECT"
           sleep 1
-          xdotool key Tab
-          xdotool key Tab
-          xdotool key Tab
-          xdotool key Return
+          import -window root -silent "$GITHUB_WORKSPACE/artifacts/project-manager-filled-dialog.png"
+          # Edit Now remains enabled; Create launches the project in Godot Editor.
+          xdotool mousemove --sync 871 710 click 1
           sleep 8
           if [ ! -f "$PROJECT/project.godot" ]; then
             import -window root -silent "$GITHUB_WORKSPACE/artifacts/project-manager-create-failed.png" || true
