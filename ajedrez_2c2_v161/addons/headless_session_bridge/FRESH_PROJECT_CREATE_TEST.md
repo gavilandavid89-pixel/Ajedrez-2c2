@@ -1,0 +1,1 @@
+Trigger end-to-end fresh project creation using Godot's native Project Manager dialog.
