@@ -117,7 +117,7 @@ func _verify_idle_timeout(registry: Dictionary, project_id: String) -> bool:
 		"project_id": project_id,
 		"command": "ping"
 	}
-	peer.put_data((JSON.stringify(request) + "\\n").to_utf8_buffer())
+	peer.put_data((JSON.stringify(request) + "\n").to_utf8_buffer())
 	var response_text := ""
 	var response_deadline := Time.get_ticks_msec() + RESPONSE_TIMEOUT_MS
 	while Time.get_ticks_msec() < response_deadline:
@@ -127,7 +127,7 @@ func _verify_idle_timeout(registry: Dictionary, project_id: String) -> bool:
 			var packet := peer.get_data(available)
 			if packet[0] == OK:
 				response_text += packet[1].get_string_from_utf8()
-				if response_text.contains("\\n"):
+				if response_text.contains("\n"):
 					break
 		await create_timer(0.05).timeout
 	if response_text.is_empty():
