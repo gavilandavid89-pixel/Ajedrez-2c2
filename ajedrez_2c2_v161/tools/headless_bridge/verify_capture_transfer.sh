@@ -24,7 +24,7 @@ transfer_file() {
     chunk_json=$(printf '%s\n' "$chunk_response" | sed -n 's/^BRIDGE_TEST_PASS //p' | tail -n 1)
     [ -n "$chunk_json" ]
     printf '%s\n' "$chunk_json" | jq -r '.result.data' | tr -d '\r\n ' | base64 -d >> "$destination_path"
-    chunk_bytes=$(printf '%s\n' "$chunk_json" | jq -r '.result.bytes_read')
+    chunk_bytes=$(printf '%s\n' "$chunk_json" | jq -r '.result.bytes_read | floor')
     [ "$chunk_bytes" -gt 0 ]
     offset=$((offset + chunk_bytes))
   done
