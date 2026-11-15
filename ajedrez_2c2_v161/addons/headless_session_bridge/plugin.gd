@@ -288,6 +288,10 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var shape_result := _configure_collision_shape(request.get("args", {}))
 			response["ok"] = bool(shape_result.get("ok", false))
 			response["result"] = shape_result
+		"create_sprite_frames":
+			var frames_result := _create_sprite_frames(request.get("args", {}))
+			response["ok"] = bool(frames_result.get("ok", false))
+			response["result"] = frames_result
 		"assign_visual_resource":
 			var visual_result := _assign_visual_resource(request.get("args", {}))
 			response["ok"] = bool(visual_result.get("ok", false))
@@ -919,6 +923,71 @@ func _add_node_to_edited_scene(raw_args: Variant) -> Dictionary:
 
 
 const COLLISION_SHAPE_TYPES := ["CircleShape2D", "RectangleShape2D", "CapsuleShape2D", "SegmentShape2D"]
+
+
+func _create_sprite_frames(raw_args: Variant) -> Dictionary:
+	if not raw_args is Dictionary:
+		return {"ok": false, "error": "invalid_args"}
+	var args: Dictionary = raw_args
+	var resource_path := str(args.get("path", ""))
+	if not resource_path.begins_with("res://") or resource_path.contains("..") or resource_path.contains("\\") or resource_path.contains("//") or not resource_path.ends_with(".tres"):
+		return {"ok": false, "error": "invalid_sprite_frames_path"}
+	if ResourceLoader.exists(resource_path) or FileAccess.file_exists(resource_path):
+		return {"ok": false, "error": "resource_already_exists", "path": resource_path}
+	var directory_path := ProjectSettings.globalize_path(resource_path).get_base_dir()
+	if not DirAccess.dir_exists_absolute(directory_path):
+		return {"ok": false, "error": "resource_directory_not_found"}
+	var raw_animations: Variant = args.get("animations", [])
+	if not raw_animations is Array or raw_animations.is_empty() or raw_animations.size() > 32:
+		return {"ok": false, "error": "animations_required_or_limit_exceeded"}
+	var prepared: Array[Dictionary] = []
+	var animation_names: Array[String] = []
+	var total_frames := 0
+	for raw_animation in raw_animations:
+		if not raw_animation is Dictionary:
+			return {"ok": false, "error": "invalid_animation_definition"}
+		var animation_name := str(raw_animation.get("name", ""))
+		if not animation_name.is_valid_identifier() or animation_name == "default" or animation_name in animation_names:
+			return {"ok": false, "error": "invalid_or_duplicate_animation_name", "name": animation_name}
+		var speed := float(raw_animation.get("speed", 8.0))
+		if not is_finite(speed) or speed < 0.1 or speed > 120.0:
+			return {"ok": false, "error": "invalid_animation_speed", "name": animation_name}
+		var raw_frames: Variant = raw_animation.get("frames", [])
+		if not raw_frames is Array or raw_frames.is_empty() or raw_frames.size() > 120:
+			return {"ok": false, "error": "animation_frames_required_or_limit_exceeded", "name": animation_name}
+		var frames: Array[Dictionary] = []
+		for raw_frame in raw_frames:
+			if not raw_frame is Dictionary:
+				return {"ok": false, "error": "invalid_frame_definition", "name": animation_name}
+			var texture_path := str(raw_frame.get("texture_path", ""))
+			if not texture_path.begins_with("res://") or texture_path.contains("..") or texture_path.contains("\\") or not ResourceLoader.exists(texture_path):
+				return {"ok": false, "error": "frame_texture_not_found_or_invalid", "path": texture_path}
+			var texture: Resource = ResourceLoader.load(texture_path)
+			if not texture is Texture2D:
+				return {"ok": false, "error": "frame_texture_required", "path": texture_path}
+			var duration := float(raw_frame.get("duration", 1.0))
+			if not is_finite(duration) or duration <= 0.0 or duration > 60.0:
+				return {"ok": false, "error": "invalid_frame_duration", "path": texture_path}
+			frames.append({"texture": texture, "texture_path": texture_path, "duration": duration})
+		total_frames += frames.size()
+		if total_frames > 500:
+			return {"ok": false, "error": "total_frame_limit_exceeded"}
+		animation_names.append(animation_name)
+		prepared.append({"name": animation_name, "speed": speed, "loop": bool(raw_animation.get("loop", true)), "frames": frames})
+	var sprite_frames := SpriteFrames.new()
+	if sprite_frames.has_animation("default"):
+		sprite_frames.remove_animation("default")
+	for animation in prepared:
+		var animation_name := str(animation["name"])
+		sprite_frames.add_animation(animation_name)
+		sprite_frames.set_animation_speed(animation_name, float(animation["speed"]))
+		sprite_frames.set_animation_loop(animation_name, bool(animation["loop"]))
+		for frame in animation["frames"]:
+			sprite_frames.add_frame(animation_name, frame["texture"], float(frame["duration"]))
+	var save_error := ResourceSaver.save(sprite_frames, resource_path)
+	if save_error != OK:
+		return {"ok": false, "error": "sprite_frames_save_failed", "code": save_error}
+	return {"ok": true, "path": resource_path, "type": "SpriteFrames", "animation_count": prepared.size(), "frame_count": total_frames, "animations": animation_names}
 
 
 func _assign_visual_resource(raw_args: Variant) -> Dictionary:

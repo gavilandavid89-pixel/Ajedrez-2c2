@@ -36,7 +36,25 @@ grep -q '"resource_type":"CompressedTexture2D"' artifacts/sprite-texture-assignm
 run_probe inspect_scene | tee artifacts/sprite-texture-inspection.log
 sed -n 's/^BRIDGE_TEST_PASS //p' artifacts/sprite-texture-inspection.log | tail -n 1 | jq -e '.result.root.children[] | select(.name == "SandboxSprite") | .inspector.properties[] | select(.name == "texture") | .value.resource_path == "res://icon.svg"' >/dev/null
 echo "FRESH_PROJECT_SPRITE_TEXTURE_ASSIGNMENT_PASS"
+# Create and inspect a real SpriteFrames resource with multiple animations.
+run_probe create_sprite_frames '{"path":"res://generated/sandbox_walk.tres","animations":[{"name":"walk","speed":6.0,"loop":true,"frames":[{"texture_path":"res://icon.svg","duration":0.5},{"texture_path":"res://icon.svg","duration":0.75}]},{"name":"idle","speed":2.0,"loop":true,"frames":[{"texture_path":"res://icon.svg","duration":1.0}]}]}' | tee artifacts/sprite-frames-create.log
+grep -q '"animation_count":2' artifacts/sprite-frames-create.log
+grep -q '"frame_count":3' artifacts/sprite-frames-create.log
+run_probe inspect_resource '{"path":"res://generated/sandbox_walk.tres"}' | tee artifacts/sprite-frames-resource-inspection.log
+grep -q '"type":"SpriteFrames"' artifacts/sprite-frames-resource-inspection.log
 run_probe add_node '{"type":"AnimatedSprite2D","name":"SandboxAnimatedSprite"}'
+run_probe assign_visual_resource '{"node_path":"SandboxAnimatedSprite","property":"sprite_frames","resource_path":"res://generated/sandbox_walk.tres"}' | tee artifacts/sprite-frames-assignment.log
+grep -q '"resource_type":"SpriteFrames"' artifacts/sprite-frames-assignment.log
+run_probe inspect_scene | tee artifacts/sprite-frames-scene-inspection.log
+sed -n 's/^BRIDGE_TEST_PASS //p' artifacts/sprite-frames-scene-inspection.log | tail -n 1 | jq -e '.result.root.children[] | select(.name == "SandboxAnimatedSprite") | .inspector.properties[] | select(.name == "sprite_frames") | .value.resource_path == "res://generated/sandbox_walk.tres"' >/dev/null
+echo "FRESH_PROJECT_SPRITE_FRAMES_CREATE_ASSIGN_PASS"
+if run_probe create_sprite_frames '{"path":"res://generated/sandbox_walk.tres","animations":[{"name":"walk","frames":[{"texture_path":"res://icon.svg"}]}]}' > artifacts/duplicate-sprite-frames.log 2>&1; then
+  echo "Existing SpriteFrames resource was overwritten" >&2
+  exit 1
+else
+  grep -q 'resource_already_exists' artifacts/duplicate-sprite-frames.log
+  echo "FRESH_PROJECT_SPRITE_FRAMES_NO_OVERWRITE_GUARD_PASS"
+fi
 if run_probe assign_visual_resource '{"node_path":"SandboxAnimatedSprite","property":"sprite_frames","resource_path":"res://icon.svg"}' > artifacts/invalid-sprite-frames-resource.log 2>&1; then
   echo "A texture was accepted as SpriteFrames" >&2
   exit 1
