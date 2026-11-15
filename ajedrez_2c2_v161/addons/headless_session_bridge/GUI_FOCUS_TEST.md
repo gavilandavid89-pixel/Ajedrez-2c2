@@ -1,0 +1,1 @@
+Trigger run for focused Project Manager keyboard shortcut.
