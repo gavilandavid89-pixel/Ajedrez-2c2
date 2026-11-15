@@ -199,12 +199,14 @@ jobs:
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- inspect_scene | tee artifacts/edited-scene-inspection.json
           grep -q '"SandboxNode"' artifacts/edited-scene-inspection.json
           grep -q '"SandboxLabel"' artifacts/edited-scene-inspection.json
+          bash ajedrez_2c2_v161/tools/headless_bridge/verify_fresh_project_features.sh "$GODOT" "$PROJECT"
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- capture_editor_screenshot | tee artifacts/screenshot-response.json
           grep -q '"source":"actual_editor_window"' artifacts/screenshot-response.json
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- start_editor_video '{"fps":2,"duration_seconds":3}'
           sleep 2
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- stop_editor_video | tee artifacts/video-response.json
           grep -q '"source":"actual_editor_window"' artifacts/video-response.json
+          bash ajedrez_2c2_v161/tools/headless_bridge/verify_capture_transfer.sh "$GODOT" "$PROJECT"
           grep -q SESSION_CONNECTED /tmp/sandbox-watcher.log
           echo "FRESH_GODOT_PROJECT_END_TO_END_PASS"
           cp /tmp/sandbox-watcher.log artifacts/session-watcher.log
