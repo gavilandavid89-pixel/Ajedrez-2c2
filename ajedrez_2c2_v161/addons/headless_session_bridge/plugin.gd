@@ -252,6 +252,14 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var undo_result := _inspect_undo_history()
 			response["ok"] = bool(undo_result.get("ok", false))
 			response["result"] = undo_result
+		"undo_bridge_action":
+			var undo_action_result := _run_bridge_undo_redo("undo")
+			response["ok"] = bool(undo_action_result.get("ok", false))
+			response["result"] = undo_action_result
+		"redo_bridge_action":
+			var redo_action_result := _run_bridge_undo_redo("redo")
+			response["ok"] = bool(redo_action_result.get("ok", false))
+			response["result"] = redo_action_result
 		"inspect_project_settings":
 			var settings_result := _inspect_project_settings()
 			response["ok"] = bool(settings_result.get("ok", false))
@@ -463,6 +471,51 @@ func _inspect_undo_history() -> Dictionary:
 		"current_action": history.get_current_action(),
 		"current_action_name": history.get_current_action_name(),
 		"version": history.get_version()
+	}
+
+
+func _run_bridge_undo_redo(direction: String) -> Dictionary:
+	if direction not in ["undo", "redo"]:
+		return {"ok": false, "error": "invalid_undo_redo_direction"}
+	var root := EditorInterface.get_edited_scene_root()
+	if root == null:
+		return {"ok": false, "error": "no_edited_scene"}
+	var manager := EditorInterface.get_editor_undo_redo()
+	if manager == null:
+		return {"ok": false, "error": "undo_manager_unavailable"}
+	var history_id := manager.get_object_history_id(root)
+	var history: UndoRedo = manager.get_history_undo_redo(history_id)
+	if history == null:
+		return {"ok": false, "error": "scene_undo_history_unavailable"}
+	var action_index := int(history.get_current_action())
+	if direction == "undo":
+		if not history.has_undo():
+			return {"ok": false, "error": "nothing_to_undo"}
+	else:
+		if not history.has_redo():
+			return {"ok": false, "error": "nothing_to_redo"}
+		action_index += 1
+	if action_index < 0 or action_index >= history.get_history_count():
+		return {"ok": false, "error": "undo_action_index_invalid"}
+	var action_name := history.get_action_name(action_index)
+	if not action_name.begins_with("Headless Bridge:"):
+		return {"ok": false, "error": "action_not_owned_by_bridge", "action_name": action_name, "direction": direction}
+	var version_before := history.get_version()
+	if direction == "undo":
+		history.undo()
+	else:
+		history.redo()
+	return {
+		"ok": true,
+		"direction": direction,
+		"action_name": action_name,
+		"history_id": history_id,
+		"version_before": version_before,
+		"version_after": history.get_version(),
+		"has_undo": history.has_undo(),
+		"has_redo": history.has_redo(),
+		"current_action": history.get_current_action(),
+		"current_action_name": history.get_current_action_name()
 	}
 
 
