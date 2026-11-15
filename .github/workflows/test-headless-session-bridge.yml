@@ -136,6 +136,10 @@ jobs:
           # Scene paths must be relative to the edited scene root, never the editor's /root/... tree.
           grep -q '"path":"Background"' artifacts/scene-inspection.json
           grep -q '"runtime_path":"/root/' artifacts/scene-inspection.json
+          grep -q '"inspector":' artifacts/scene-inspection.json
+          grep -q '"property_count":' artifacts/scene-inspection.json
+          grep -q '"name":"collision_layer"' artifacts/scene-inspection.json
+          echo "DYNAMIC_INSPECTOR_DISCOVERY_PASS"
           if grep -q '"path":"/root/' artifacts/scene-inspection.json; then
             echo "Scene inspection leaked an editor runtime path into the stable scene path field."
             exit 1
