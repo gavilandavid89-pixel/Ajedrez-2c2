@@ -171,6 +171,18 @@ jobs:
           start_editor() {
             "$GODOT" --editor --path "$PROJECT" --rendering-method gl_compatibility --rendering-driver opengl3 --audio-driver Dummy >> /tmp/godot-sandbox-editor.log 2>&1 &
             editor_pid=$!
+            wid=""
+            for _ in $(seq 1 80); do
+              wid=$(xdotool search --onlyvisible --name "Bridge Sandbox" 2>/dev/null | tail -1 || true)
+              [ -n "$wid" ] && break
+              sleep 0.25
+            done
+            if [ -n "$wid" ]; then
+              xdotool windowmove "$wid" 0 0
+              xdotool windowsize "$wid" 1600 1000
+              sleep 2
+              xdotool getwindowgeometry --shell "$wid" > artifacts/editor-window-geometry.txt
+            fi
           }
           cleanup() {
             if [ -n "${watcher_pid:-}" ]; then kill "$watcher_pid" 2>/dev/null || true; wait "$watcher_pid" 2>/dev/null || true; fi
