@@ -451,6 +451,10 @@ func _add_node_to_edited_scene(raw_args: Variant) -> Dictionary:
 	var parent: Node = root if parent_path.is_empty() else root.get_node_or_null(NodePath(parent_path))
 	if parent == null:
 		return {"ok": false, "error": "parent_not_found"}
+	if type_name in ["CollisionShape2D", "CollisionPolygon2D"] and not parent is CollisionObject2D:
+		return {"ok": false, "error": "collision_shape_parent_must_be_collision_object"}
+	if type_name in ["StaticBody2D", "CharacterBody2D", "RigidBody2D", "AnimatableBody2D", "Area2D", "RayCast2D", "ShapeCast2D"] and not parent is Node2D:
+		return {"ok": false, "error": "physics_node_parent_must_be_node2d"}
 	var node_name := str(args.get("name", type_name))
 	if node_name.is_empty() or node_name.contains("/") or node_name.contains(":") or node_name == "." or node_name == "..":
 		return {"ok": false, "error": "invalid_node_name"}
