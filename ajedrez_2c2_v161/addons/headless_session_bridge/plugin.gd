@@ -282,20 +282,25 @@ func _inspect_edited_scene() -> Dictionary:
 	return {
 		"ok": true,
 		"scene_path": root.scene_file_path,
-		"root": _serialize_node(root, 0, budget),
+		"root": _serialize_node(root, root, 0, budget),
 		"truncated": int(budget["remaining"]) <= 0
 	}
 
 
-func _serialize_node(node: Node, depth: int, budget: Dictionary) -> Dictionary:
+func _serialize_node(node: Node, scene_root: Node, depth: int, budget: Dictionary) -> Dictionary:
 	if int(budget["remaining"]) <= 0:
 		return {"truncated": true}
 	budget["remaining"] = int(budget["remaining"]) - 1
 	var result := {
 		"name": str(node.name),
 		"type": node.get_class(),
-		"path": str(node.get_path()),
+		# "path" is stable within the edited scene; runtime_path is diagnostic
+		# context from the editor's own scene tree and must not be used as an edit target.
+		"path": str(scene_root.get_path_to(node)),
+		"runtime_path": str(node.get_path()),
+		"groups": node.get_groups(),
 		"child_count": node.get_child_count(),
+		"properties": _inspect_node_properties(node),
 		"children": []
 	}
 	if depth >= 8:
@@ -305,11 +310,59 @@ func _serialize_node(node: Node, depth: int, budget: Dictionary) -> Dictionary:
 	for child in node.get_children():
 		if int(budget["remaining"]) <= 0:
 			break
-		children.append(_serialize_node(child, depth + 1, budget))
+		children.append(_serialize_node(child, scene_root, depth + 1, budget))
 	result["children"] = children
 	if children.size() < node.get_child_count():
 		result["truncated"] = true
 	return result
+
+
+func _inspect_node_properties(node: Node) -> Dictionary:
+	# Deliberately expose a typed, bounded property schema rather than every
+	# Object property. This gives the operator enough information to reason
+	# about transforms and 2D collision setup without leaking editor internals.
+	var properties: Dictionary = {}
+	if node is Node2D:
+		var node_2d := node as Node2D
+		properties["position"] = _vector2_to_json(node_2d.position)
+		properties["rotation_degrees"] = node_2d.rotation_degrees
+		properties["scale"] = _vector2_to_json(node_2d.scale)
+		properties["z_index"] = node_2d.z_index
+		properties["visible"] = node_2d.visible
+	if node is CollisionObject2D:
+		var collision_object := node as CollisionObject2D
+		properties["collision_layer"] = collision_object.collision_layer
+		properties["collision_mask"] = collision_object.collision_mask
+		properties["input_pickable"] = collision_object.input_pickable
+	if node is Area2D:
+		var area := node as Area2D
+		properties["monitoring"] = area.monitoring
+		properties["monitorable"] = area.monitorable
+	if node is CollisionShape2D:
+		var collision_shape := node as CollisionShape2D
+		properties["disabled"] = collision_shape.disabled
+		properties["one_way_collision"] = collision_shape.one_way_collision
+		properties["shape"] = _inspect_shape_resource(collision_shape.shape)
+	return properties
+
+
+func _inspect_shape_resource(shape: Shape2D) -> Dictionary:
+	if shape == null:
+		return {"assigned": false}
+	var result := {"assigned": true, "type": shape.get_class()}
+	for property_name in ["radius", "height", "size", "a", "b", "extents"]:
+		var value: Variant = shape.get(property_name)
+		if value == null:
+			continue
+		if value is Vector2:
+			result[property_name] = _vector2_to_json(value)
+		elif value is float or value is int:
+			result[property_name] = value
+	return result
+
+
+func _vector2_to_json(value: Vector2) -> Dictionary:
+	return {"x": value.x, "y": value.y}
 
 
 func _list_project_resources() -> Dictionary:
