@@ -30,6 +30,20 @@ sed -n 's/^BRIDGE_TEST_PASS //p' artifacts/redo-bridge-action-response.log | tai
 run_probe inspect_scene | tee artifacts/redo-scene-inspection.log
 grep -q 'CircleShape2D' artifacts/redo-scene-inspection.log
 echo "FRESH_PROJECT_REAL_REDO_PASS"
+run_probe add_node '{"type":"Sprite2D","name":"SandboxSprite"}'
+run_probe assign_visual_resource '{"node_path":"SandboxSprite","property":"texture","resource_path":"res://icon.svg"}' | tee artifacts/sprite-texture-assignment.log
+grep -q '"resource_type":"CompressedTexture2D"' artifacts/sprite-texture-assignment.log
+run_probe inspect_scene | tee artifacts/sprite-texture-inspection.log
+sed -n 's/^BRIDGE_TEST_PASS //p' artifacts/sprite-texture-inspection.log | tail -n 1 | jq -e '.result.root.children[] | select(.name == "SandboxSprite") | .inspector.properties[] | select(.name == "texture") | .value.resource_path == "res://icon.svg"' >/dev/null
+echo "FRESH_PROJECT_SPRITE_TEXTURE_ASSIGNMENT_PASS"
+run_probe add_node '{"type":"AnimatedSprite2D","name":"SandboxAnimatedSprite"}'
+if run_probe assign_visual_resource '{"node_path":"SandboxAnimatedSprite","property":"sprite_frames","resource_path":"res://icon.svg"}' > artifacts/invalid-sprite-frames-resource.log 2>&1; then
+  echo "A texture was accepted as SpriteFrames" >&2
+  exit 1
+else
+  grep -q 'sprite_frames_resource_required' artifacts/invalid-sprite-frames-resource.log
+  echo "FRESH_PROJECT_VISUAL_RESOURCE_TYPE_GUARD_PASS"
+fi
 if run_probe add_node '{"type":"CollisionShape2D","name":"InvalidCollision"}' > artifacts/invalid-collision-parent.log 2>&1; then
   echo "CollisionShape2D invalid parent was accepted" >&2
   exit 1

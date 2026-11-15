@@ -288,6 +288,10 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var shape_result := _configure_collision_shape(request.get("args", {}))
 			response["ok"] = bool(shape_result.get("ok", false))
 			response["result"] = shape_result
+		"assign_visual_resource":
+			var visual_result := _assign_visual_resource(request.get("args", {}))
+			response["ok"] = bool(visual_result.get("ok", false))
+			response["result"] = visual_result
 		_:
 			response = {"ok": false, "error": "command_not_allowed"}
 	_send_response(peer, response)
@@ -915,6 +919,55 @@ func _add_node_to_edited_scene(raw_args: Variant) -> Dictionary:
 
 
 const COLLISION_SHAPE_TYPES := ["CircleShape2D", "RectangleShape2D", "CapsuleShape2D", "SegmentShape2D"]
+
+
+func _assign_visual_resource(raw_args: Variant) -> Dictionary:
+	if not raw_args is Dictionary:
+		return {"ok": false, "error": "invalid_args"}
+	var args: Dictionary = raw_args
+	var root := EditorInterface.get_edited_scene_root()
+	if root == null:
+		return {"ok": false, "error": "no_edited_scene"}
+	var node_path := str(args.get("node_path", ""))
+	if node_path.begins_with("/") or node_path == ".." or node_path.contains("../") or node_path.contains("/..") or node_path.contains("\\"):
+		return {"ok": false, "error": "invalid_node_path"}
+	var node: Node = root if node_path.is_empty() or node_path == "." else root.get_node_or_null(NodePath(node_path))
+	if node == null:
+		return {"ok": false, "error": "node_not_found"}
+	var property_name := str(args.get("property", ""))
+	var expected_class := ""
+	if property_name == "texture" and (node is Sprite2D or node is TextureRect):
+		expected_class = "Texture2D"
+	elif property_name == "sprite_frames" and node is AnimatedSprite2D:
+		expected_class = "SpriteFrames"
+	else:
+		return {"ok": false, "error": "visual_resource_target_not_allowed"}
+	var resource_path := str(args.get("resource_path", ""))
+	if not resource_path.begins_with("res://") or resource_path.contains("..") or resource_path.contains("\\"):
+		return {"ok": false, "error": "invalid_resource_path"}
+	if not ResourceLoader.exists(resource_path):
+		return {"ok": false, "error": "resource_not_found", "path": resource_path}
+	var resource: Resource = ResourceLoader.load(resource_path)
+	if resource == null:
+		return {"ok": false, "error": "resource_load_failed", "path": resource_path}
+	if expected_class == "Texture2D" and not resource is Texture2D:
+		return {"ok": false, "error": "texture_resource_required", "actual_type": resource.get_class()}
+	if expected_class == "SpriteFrames" and not resource is SpriteFrames:
+		return {"ok": false, "error": "sprite_frames_resource_required", "actual_type": resource.get_class()}
+	var previous: Resource = node.get(property_name)
+	var undo_redo := get_undo_redo()
+	undo_redo.create_action("Headless Bridge: Assign " + property_name + " to " + str(node.name))
+	undo_redo.add_do_property(node, property_name, resource)
+	undo_redo.add_undo_property(node, property_name, previous)
+	undo_redo.commit_action()
+	return {
+		"ok": true,
+		"node_path": str(root.get_path_to(node)),
+		"property": property_name,
+		"resource_path": resource_path,
+		"resource_type": resource.get_class(),
+		"previous_resource_path": previous.resource_path if previous != null else ""
+	}
 
 
 func _configure_collision_shape(raw_args: Variant) -> Dictionary:
