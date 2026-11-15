@@ -167,6 +167,7 @@ jobs:
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- stop_editor_video | tee artifacts/editor-video-stop.json
           grep -q '"source":"actual_editor_window"' artifacts/editor-video-stop.json
           grep -q '"frames":' artifacts/editor-video-stop.json
+          grep -q '"file_size":' artifacts/editor-video-stop.json
           echo "REAL_EDITOR_VIDEO_CAPTURE_PASS"
           if grep -q '"path":"/root/' artifacts/scene-inspection.json; then
             echo "Scene inspection leaked an editor runtime path into the stable scene path field."
