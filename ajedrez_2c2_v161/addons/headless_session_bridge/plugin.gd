@@ -216,6 +216,10 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 					"deadline_msec": Time.get_ticks_msec() + SCENE_OPEN_TIMEOUT_MS
 				})
 				return
+		"read_capture_chunk":
+			var chunk_result := _read_capture_chunk(request.get("args", {}))
+			response["ok"] = bool(chunk_result.get("ok", false))
+			response["result"] = chunk_result
 		"capture_editor_screenshot":
 			var capture_result := _capture_editor_screenshot()
 			response["ok"] = bool(capture_result.get("ok", false))
@@ -995,6 +999,7 @@ func _capture_editor_screenshot() -> Dictionary:
 	return {
 		"ok": true,
 		"capture_path": ProjectSettings.globalize_path(capture_path),
+		"file_size": FileAccess.get_file_as_bytes(capture_path).size(),
 		"width": image.get_width(),
 		"height": image.get_height(),
 		"source": "actual_editor_window",
@@ -1094,9 +1099,48 @@ func _finalize_editor_video() -> Dictionary:
 	return {
 		"ok": true,
 		"video_path": output_path,
+		"file_size": FileAccess.get_file_as_bytes(output_path).size(),
 		"frames": frames,
 		"fps": recording["fps"],
 		"duration_seconds": float(frames) / float(recording["fps"]),
 		"source": "actual_editor_window",
 		"capture_error": recording.get("capture_error", "")
+	}
+
+
+
+const MAX_CAPTURE_CHUNK_BYTES := 48000
+
+
+func _read_capture_chunk(raw_args: Variant) -> Dictionary:
+	if not raw_args is Dictionary:
+		return {"ok": false, "error": "invalid_arguments"}
+	var path := str(raw_args.get("path", ""))
+	var capture_root := ProjectSettings.globalize_path(CAPTURE_DIRECTORY).simplify_path()
+	var normalized_path := path.simplify_path()
+	if not normalized_path.begins_with(capture_root + "/") or normalized_path.contains("/../") or normalized_path.get_extension().to_lower() not in ["png", "mp4"]:
+		return {"ok": false, "error": "capture_path_not_allowed"}
+	if not FileAccess.file_exists(normalized_path):
+		return {"ok": false, "error": "capture_file_not_found"}
+	var offset := int(raw_args.get("offset", 0))
+	var requested_length := int(raw_args.get("length", MAX_CAPTURE_CHUNK_BYTES))
+	var file := FileAccess.open(normalized_path, FileAccess.READ)
+	if file == null:
+		return {"ok": false, "error": "capture_file_unreadable"}
+	var file_size := file.get_length()
+	if offset < 0 or offset > file_size or requested_length < 1 or requested_length > MAX_CAPTURE_CHUNK_BYTES:
+		file.close()
+		return {"ok": false, "error": "capture_chunk_range_invalid", "file_size": file_size}
+	file.seek(offset)
+	var bytes := file.get_buffer(mini(requested_length, file_size - offset))
+	file.close()
+	return {
+		"ok": true,
+		"path": normalized_path,
+		"offset": offset,
+		"file_size": file_size,
+		"bytes_read": bytes.size(),
+		"eof": offset + bytes.size() >= file_size,
+		"encoding": "base64",
+		"data": Marshalls.raw_to_base64(bytes)
 	}
