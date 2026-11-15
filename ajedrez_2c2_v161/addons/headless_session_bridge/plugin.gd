@@ -494,6 +494,19 @@ func _configure_collision_shape(raw_args: Variant) -> Dictionary:
 	var raw_dimensions: Variant = args.get("dimensions", {})
 	if not raw_dimensions is Dictionary:
 		return {"ok": false, "error": "dimensions_required"}
+	var expected_dimensions: Array = []
+	match shape_type:
+		"CircleShape2D":
+			expected_dimensions = ["radius"]
+		"RectangleShape2D":
+			expected_dimensions = ["size"]
+		"CapsuleShape2D":
+			expected_dimensions = ["radius", "height"]
+		"SegmentShape2D":
+			expected_dimensions = ["a", "b"]
+	for dimension_name in raw_dimensions:
+		if str(dimension_name) not in expected_dimensions:
+			return {"ok": false, "error": "dimension_not_allowed", "dimension": str(dimension_name)}
 	var shape := ClassDB.instantiate(shape_type) as Shape2D
 	if shape == null:
 		return {"ok": false, "error": "shape_creation_failed"}
@@ -530,7 +543,7 @@ func _apply_shape_dimensions(shape: Shape2D, shape_type: String, dimensions: Dic
 				return "radius_and_height_required"
 			var capsule_radius := float(dimensions["radius"])
 			var capsule_height := float(dimensions["height"])
-			if not is_finite(capsule_radius) or not is_finite(capsule_height) or capsule_radius <= 0.0 or capsule_height < capsule_radius * 2.0 or capsule_height > 1000000.0:
+			if not is_finite(capsule_radius) or not is_finite(capsule_height) or capsule_radius <= 0.0 or capsule_radius > 500000.0 or capsule_height < capsule_radius * 2.0 or capsule_height > 1000000.0:
 				return "invalid_capsule_dimensions"
 			(shape as CapsuleShape2D).radius = capsule_radius
 			(shape as CapsuleShape2D).height = capsule_height
