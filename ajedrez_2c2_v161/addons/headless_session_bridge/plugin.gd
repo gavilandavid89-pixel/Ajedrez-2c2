@@ -7,8 +7,7 @@ const PROTOCOL_VERSION := 1
 const CONNECTION_IDLE_TIMEOUT_MS := 5000
 
 var _server: TCPServer
-var _peer: StreamPeerTCP
-var _buffer := ""
+var _clients: Array[Dictionary] = []
 var _token := ""
 var _project_id := ""
 var _registry_absolute_path := ""
@@ -59,8 +58,11 @@ func _exit_tree() -> void:
 	set_process(false)
 	if _server != null:
 		_server.stop()
-	if _peer != null:
-		_peer.disconnect_from_host()
+	for client in _clients:
+		var peer: StreamPeerTCP = client["peer"]
+		if peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
+			peer.disconnect_from_host()
+	_clients.clear()
 	_remove_own_registry()
 	if _panel != null and is_instance_valid(_panel):
 		remove_control_from_bottom_panel(_panel)
@@ -70,70 +72,82 @@ func _exit_tree() -> void:
 func _process(_delta: float) -> void:
 	if _server == null:
 		return
-	if _peer == null and _server.is_connection_available():
-		_peer = _server.take_connection()
-		_buffer = ""
-		_last_activity_msec = Time.get_ticks_msec()
-	if _peer == null:
-		return
 
-	_peer.poll()
-	if _peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
-		_peer = null
-		_buffer = ""
-		_status_label.text = "Estado: operador desconectado (última orden conservada)"
-		return
+	# Accept every pending local client. The persistent heartbeat operator and
+	# short-lived command clients no longer compete for a single socket.
+	while _server.is_connection_available():
+		var peer := _server.take_connection()
+		_clients.append({
+			"peer": peer,
+			"buffer": "",
+			"last_activity_msec": Time.get_ticks_msec()
+		})
 
-	var available := _peer.get_available_bytes()
-	if available <= 0:
-		if _last_activity_msec > 0 and Time.get_ticks_msec() - _last_activity_msec > CONNECTION_IDLE_TIMEOUT_MS:
-			_peer.disconnect_from_host()
-			_peer = null
-			_buffer = ""
-			_status_label.text = "Estado: desconectado por falta de señal"
-		return
-	_last_activity_msec = Time.get_ticks_msec()
-	var packet := _peer.get_data(available)
-	if packet[0] != OK:
-		_peer = null
-		_buffer = ""
-		return
-	_buffer += packet[1].get_string_from_utf8()
-	if _buffer.length() > 65536:
-		_peer.disconnect_from_host()
-		_peer = null
-		_buffer = ""
-		_status_label.text = "Estado: solicitud rechazada (mensaje demasiado grande)"
-		return
-	while _buffer.contains("\n"):
-		var split_at := _buffer.find("\n")
-		var line := _buffer.substr(0, split_at).strip_edges()
-		_buffer = _buffer.substr(split_at + 1)
-		if not line.is_empty():
-			_handle_request(line)
+	for index in range(_clients.size() - 1, -1, -1):
+		var client: Dictionary = _clients[index]
+		var peer: StreamPeerTCP = client["peer"]
+		peer.poll()
+		if peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
+			_remove_client(index)
+			continue
+
+		var available := peer.get_available_bytes()
+		if available <= 0:
+			if Time.get_ticks_msec() - int(client["last_activity_msec"]) > CONNECTION_IDLE_TIMEOUT_MS:
+				peer.disconnect_from_host()
+				_remove_client(index)
+			continue
+
+		client["last_activity_msec"] = Time.get_ticks_msec()
+		var packet := peer.get_data(available)
+		if packet[0] != OK:
+			_remove_client(index)
+			continue
+		client["buffer"] = str(client["buffer"]) + packet[1].get_string_from_utf8()
+		if str(client["buffer"]).length() > 65536:
+			peer.disconnect_from_host()
+			_remove_client(index)
+			continue
+
+		while str(client["buffer"]).contains("\\n"):
+			var buffer_text := str(client["buffer"])
+			var split_at := buffer_text.find("\\n")
+			var line := buffer_text.substr(0, split_at).strip_edges()
+			client["buffer"] = buffer_text.substr(split_at + 1)
+			if not line.is_empty():
+				_handle_request(peer, line)
+		_clients[index] = client
 
 
-func _handle_request(line: String) -> void:
+func _remove_client(index: int) -> void:
+	if index < 0 or index >= _clients.size():
+		return
+	_clients.remove_at(index)
+	if _clients.is_empty():
+		_status_label.text = "Estado: esperando operador"
+
+
+func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 	var parsed: Variant = JSON.parse_string(line)
 	if not parsed is Dictionary:
-		_send_response({"ok": false, "error": "invalid_json"})
+		_send_response(peer, {"ok": false, "error": "invalid_json"})
 		return
 	var request: Dictionary = parsed
 	if int(request.get("protocol", -1)) != PROTOCOL_VERSION:
-		_send_response({"ok": false, "error": "protocol_mismatch"})
+		_send_response(peer, {"ok": false, "error": "protocol_mismatch"})
 		return
 	if str(request.get("token", "")) != _token:
-		_send_response({"ok": false, "error": "unauthorized"})
+		_send_response(peer, {"ok": false, "error": "unauthorized"})
 		return
 	if str(request.get("project_id", "")) != _project_id:
-		_send_response({"ok": false, "error": "wrong_project"})
+		_send_response(peer, {"ok": false, "error": "wrong_project"})
 		return
 
 	var command := str(request.get("command", ""))
 	var response := {"ok": true, "command": command, "project_id": _project_id, "editor_pid": OS.get_process_id()}
 	match command:
 		"ping":
-			_status_label.text = "Estado: conectado (ping)"
+			_status_label.text = "Estado: conectado (%d clientes)" % _clients.size()
 			response["status"] = "alive"
 		"show_test_marker":
 			_marker_label.text = "PRUEBA HEADLESS 001 — CAMBIO RECIBIDO"
@@ -161,12 +175,12 @@ func _handle_request(line: String) -> void:
 			response["result"] = result
 		_:
 			response = {"ok": false, "error": "command_not_allowed"}
-	_send_response(response)
+	_send_response(peer, response)
 
 
-func _send_response(payload: Dictionary) -> void:
-	if _peer != null and _peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
-		_peer.put_data((JSON.stringify(payload) + "\n").to_utf8_buffer())
+func _send_response(peer: StreamPeerTCP, payload: Dictionary) -> void:
+	if peer != null and peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
+		peer.put_data((JSON.stringify(payload) + "\\n").to_utf8_buffer())
 
 
 func _write_registry() -> void:
