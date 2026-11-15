@@ -147,6 +147,10 @@ jobs:
           grep -q '"settings":' artifacts/project-settings-inspection.json
           grep -q '"application/config/name"' artifacts/project-settings-inspection.json
           echo "PROJECT_SETTINGS_INSPECTION_PASS"
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- inspect_editor_settings | tee artifacts/editor-settings-inspection.json
+          grep -q '"settings":' artifacts/editor-settings-inspection.json
+          grep -q '"interface/' artifacts/editor-settings-inspection.json
+          echo "EDITOR_SETTINGS_INSPECTION_PASS"
           if grep -q '"path":"/root/' artifacts/scene-inspection.json; then
             echo "Scene inspection leaked an editor runtime path into the stable scene path field."
             exit 1
