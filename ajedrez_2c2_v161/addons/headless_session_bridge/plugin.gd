@@ -137,6 +137,8 @@ func _handle_request(line: String) -> void:
 			_marker_label.text = ""
 			_status_label.text = "Estado: cambio temporal revertido"
 			response["status"] = "marker_cleared"
+		"open_scene":
+			response["result"] = _open_project_scene(request.get("args", {}))
 		"inspect_scene":
 			response["result"] = _inspect_edited_scene()
 		"list_project_resources":
@@ -291,3 +293,16 @@ func _add_node_to_edited_scene(raw_args: Variant) -> Dictionary:
 	undo_redo.add_undo_method(new_node, "set_owner", null)
 	undo_redo.commit_action()
 	return {"ok": true, "node_path": str(root.get_path_to(new_node)), "type": type_name, "name": node_name}
+
+
+
+func _open_project_scene(raw_args: Variant) -> Dictionary:
+	if not raw_args is Dictionary:
+		return {"ok": false, "error": "invalid_args"}
+	var scene_path := str(raw_args.get("path", ""))
+	if not scene_path.begins_with("res://scenes/") or not scene_path.ends_with(".tscn"):
+		return {"ok": false, "error": "scene_path_not_allowed"}
+	if not FileAccess.file_exists(scene_path):
+		return {"ok": false, "error": "scene_not_found"}
+	EditorInterface.open_scene_from_path(scene_path)
+	return {"ok": true, "scene_path": scene_path}
