@@ -1,0 +1,1 @@
+Capture and inspect native Godot New Project dialog.
