@@ -200,6 +200,7 @@ jobs:
           grep -q '"SandboxNode"' artifacts/edited-scene-inspection.json
           grep -q '"SandboxLabel"' artifacts/edited-scene-inspection.json
           bash ajedrez_2c2_v161/tools/headless_bridge/verify_fresh_project_features.sh "$GODOT" "$PROJECT"
+          import -window root -silent "$GITHUB_WORKSPACE/artifacts/editor-desktop-root.png"
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- capture_editor_screenshot | tee artifacts/screenshot-response.json
           grep -q '"source":"actual_editor_window"' artifacts/screenshot-response.json
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- start_editor_video '{"fps":2,"duration_seconds":3}'
