@@ -157,7 +157,7 @@ jobs:
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- capture_editor_screenshot | tee artifacts/editor-capture-response.json
           grep -q '"source":"actual_editor_window"' artifacts/editor-capture-response.json
           grep -q '"width":' artifacts/editor-capture-response.json
-          capture_path=$(python3 -c 'import json; print(json.load(open("artifacts/editor-capture-response.json"))["result"]["capture_path"])')
+          capture_path=$(python3 -c 'import json; s=open("artifacts/editor-capture-response.json").read(); line=next(x for x in s.splitlines() if x.startswith("BRIDGE_TEST_PASS ")); print(json.loads(line.split(" ",1)[1])["result"]["capture_path"])')
           cp "$capture_path" artifacts/real-editor-window.png
           printf -v chunk_args '{"path":"%s","offset":0,"length":1024}' "$capture_path"
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- read_capture_chunk "$chunk_args" | tee artifacts/editor-capture-chunk.json
@@ -170,7 +170,7 @@ jobs:
           grep -q '"source":"actual_editor_window"' artifacts/editor-video-stop.json
           grep -q '"frames":' artifacts/editor-video-stop.json
           grep -q '"file_size":' artifacts/editor-video-stop.json
-          video_path=$(python3 -c 'import json; print(json.load(open("artifacts/editor-video-stop.json"))["result"]["video_path"])')
+          video_path=$(python3 -c 'import json; s=open("artifacts/editor-video-stop.json").read(); line=next(x for x in s.splitlines() if x.startswith("BRIDGE_TEST_PASS ")); print(json.loads(line.split(" ",1)[1])["result"]["video_path"])')
           cp "$video_path" artifacts/real-editor-session.mp4
           ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1 "$video_path" | tee artifacts/editor-video-probe.txt
           grep -q 'codec_name=h264' artifacts/editor-video-probe.txt
