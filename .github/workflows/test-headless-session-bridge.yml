@@ -128,6 +128,10 @@ jobs:
           test -s artifacts/editor-with-headless-marker.png
           test -s artifacts/editor-after-revert.png
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- open_scene '{"path":"res://scenes/loading.tscn"}'
+          # Reopening the already-active scene must still receive a definitive confirmation.
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- open_scene '{"path":"res://scenes/loading.tscn"}'
+          # Equivalent normalized paths must compare consistently in the probe.
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- open_scene '{"path":"res://scenes/../scenes/loading.tscn"}'
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- inspect_scene
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- list_project_resources
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- add_node '{"type":"Label","name":"HeadlessBridgeSmokeTest"}'
