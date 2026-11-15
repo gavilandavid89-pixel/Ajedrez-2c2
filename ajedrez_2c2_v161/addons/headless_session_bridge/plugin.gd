@@ -5,9 +5,11 @@ const BRIDGE_PORT := 48765
 const REGISTRY_PATH := "user://headless_bridge.json"
 const PROTOCOL_VERSION := 1
 const CONNECTION_IDLE_TIMEOUT_MS := 5000
+const SCENE_OPEN_TIMEOUT_MS := 10000
 
 var _server: TCPServer
 var _clients: Array[Dictionary] = []
+var _pending_scene_opens: Array[Dictionary] = []
 var _token := ""
 var _project_id := ""
 var _registry_absolute_path := ""
@@ -118,6 +120,41 @@ func _process(_delta: float) -> void:
 				_handle_request(peer, line)
 		_clients[index] = client
 
+	_poll_pending_scene_opens()
+
+
+func _poll_pending_scene_opens() -> void:
+	for index in range(_pending_scene_opens.size() - 1, -1, -1):
+		var pending: Dictionary = _pending_scene_opens[index]
+		var peer: StreamPeerTCP = pending["peer"]
+		if peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
+			_pending_scene_opens.remove_at(index)
+			continue
+
+		var requested_path := str(pending["scene_path"])
+		var root := EditorInterface.get_edited_scene_root()
+		if root != null and root.scene_file_path == requested_path:
+			_send_response(peer, {
+				"ok": true,
+				"command": "open_scene",
+				"project_id": _project_id,
+				"editor_pid": OS.get_process_id(),
+				"result": {"ok": true, "scene_path": requested_path, "opened": true}
+			})
+			_pending_scene_opens.remove_at(index)
+			continue
+
+		if Time.get_ticks_msec() >= int(pending["deadline_msec"]):
+			_send_response(peer, {
+				"ok": false,
+				"command": "open_scene",
+				"project_id": _project_id,
+				"editor_pid": OS.get_process_id(),
+				"error": "scene_open_timeout",
+				"result": {"ok": false, "scene_path": requested_path, "opened": false}
+			})
+			_pending_scene_opens.remove_at(index)
+
 
 func _remove_client(index: int) -> void:
 	if index < 0 or index >= _clients.size():
@@ -159,8 +196,16 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			response["status"] = "marker_cleared"
 		"open_scene":
 			var open_result := _open_project_scene(request.get("args", {}))
-			response["ok"] = bool(open_result.get("ok", false))
-			response["result"] = open_result
+			if not bool(open_result.get("ok", false)):
+				response["ok"] = false
+				response["result"] = open_result
+			elif bool(open_result.get("pending", false)):
+				_pending_scene_opens.append({
+					"peer": peer,
+					"scene_path": str(open_result.get("scene_path", "")),
+					"deadline_msec": Time.get_ticks_msec() + SCENE_OPEN_TIMEOUT_MS
+				})
+				return
 		"inspect_scene":
 			var inspect_result := _inspect_edited_scene()
 			response["ok"] = bool(inspect_result.get("ok", false))
@@ -332,4 +377,4 @@ func _open_project_scene(raw_args: Variant) -> Dictionary:
 	if not FileAccess.file_exists(scene_path):
 		return {"ok": false, "error": "scene_not_found"}
 	EditorInterface.open_scene_from_path(scene_path)
-	return {"ok": true, "scene_path": scene_path, "accepted": true}
+	return {"ok": true, "scene_path": scene_path, "pending": true}
