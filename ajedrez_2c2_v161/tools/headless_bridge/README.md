@@ -32,15 +32,17 @@ godot --headless --path . --script res://tools/headless_bridge/bridge_probe.gd -
 ```
 
 Commands are explicitly allowlisted: `ping`, `show_test_marker`,
-`clear_test_marker`, `inspect_scene`, `list_project_resources` and `add_node`.
-The inspection commands return a bounded scene-tree snapshot (maximum 200
-nodes, depth 8) and a bounded project-resource inventory (maximum 300 entries).
-`add_node` accepts only a fixed set of common 2D/UI node classes, adds the node
-to the currently edited scene through the editor undo manager, and does not
-save the scene automatically. The user can inspect and undo the change in the
-editor. Requests are JSON lines containing the protocol version, project
-fingerprint and random session token. No arbitrary GDScript, shell commands,
-file writes, or eval payloads are accepted.
+`clear_test_marker`, `open_scene`, `inspect_scene`, `list_project_resources`
+and `add_node`. `open_scene` accepts a JSON object such as
+`{"path":"res://scenes/loading.tscn"}` and only permits `.tscn` files beneath
+`res://scenes/`. The inspection commands return a bounded scene-tree snapshot
+(maximum 200 nodes, depth 8) and a bounded project-resource inventory (maximum
+300 entries). `add_node` accepts only a fixed set of common 2D/UI node classes,
+adds the node to the currently edited scene through the editor undo manager,
+and does not save the scene automatically. The user can inspect and undo the
+change in the editor. Requests are JSON lines containing the protocol version,
+project fingerprint and random session token. No arbitrary GDScript, shell
+commands, file writes, or eval payloads are accepted.
 
 ## Persistent discovery and reconnect
 
@@ -56,10 +58,12 @@ discovery when the editor disappears or stops responding. If the editor is
 reopened, it reads the new session token and reconnects. Stop the watcher with
 Ctrl+C or by terminating its process.
 
-The current plugin intentionally supports one active TCP peer at a time. Use
-the persistent watcher as the session owner; do not run it simultaneously with
-the one-shot probe while it holds the connection. A future command broker can
-multiplex interactive commands over that same authenticated connection.
+The current plugin intentionally supports one active TCP peer at a time. The
+watcher and one-shot probe therefore cannot operate concurrently: stop the
+watcher before using a one-shot probe. This is a known architectural limitation,
+not a multi-client command broker. The next bridge milestone is to give one
+persistent operator connection both heartbeat and queued command/response
+handling, so commands do not compete with the watcher for the editor socket.
 
 ## Boundaries
 
@@ -68,6 +72,9 @@ multiplex interactive commands over that same authenticated connection.
 - Protocol is newline-delimited JSON with a version field.
 - No arbitrary code execution.
 - Idle peer connections are closed after five seconds without traffic.
+- Incoming buffered JSON lines are limited to 64 KiB; oversized requests are
+  disconnected.
+- Command-level failures are propagated through the top-level `ok` response.
 - `add_node` is the only scene-mutating command and is limited to the current
   edited scene, a fixed node-type allowlist, and the editor undo history.
 - Scene/resource inspection is bounded to prevent unbounded responses.
