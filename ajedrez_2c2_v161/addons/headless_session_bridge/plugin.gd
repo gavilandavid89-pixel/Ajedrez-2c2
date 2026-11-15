@@ -1020,8 +1020,10 @@ func _open_project_scene(raw_args: Variant) -> Dictionary:
 	if not raw_args is Dictionary:
 		return {"ok": false, "error": "invalid_args"}
 	var requested_path := str(raw_args.get("path", ""))
+	if not requested_path.begins_with("res://") or requested_path.contains("..") or requested_path.contains("\\"):
+		return {"ok": false, "error": "scene_path_not_allowed"}
 	var scene_path := requested_path.simplify_path()
-	if not scene_path.begins_with("res://scenes/") or not scene_path.ends_with(".tscn"):
+	if not scene_path.ends_with(".tscn"):
 		return {"ok": false, "error": "scene_path_not_allowed"}
 	if not FileAccess.file_exists(scene_path):
 		return {"ok": false, "error": "scene_not_found"}
