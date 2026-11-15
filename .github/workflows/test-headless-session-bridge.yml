@@ -143,6 +143,8 @@ jobs:
           echo "SCENE_RELATIVE_PATHS_PASS"
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- list_project_resources
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- add_node '{"type":"Label","name":"HeadlessBridgeSmokeTest"}'
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- add_node '{"type":"StaticBody2D","name":"HeadlessCollisionBody"}'
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- add_node '{"type":"CollisionShape2D","name":"HeadlessCollisionShape","parent_path":"HeadlessCollisionBody"}'
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- inspect_scene
           kill -0 "$watcher_pid"
           echo "CONCURRENT_WATCHER_AND_PROBE_PASS"
