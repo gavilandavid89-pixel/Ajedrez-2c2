@@ -7,6 +7,8 @@ on:
     paths:
       - "ajedrez_2c2_v161/addons/headless_session_bridge/**"
       - "ajedrez_2c2_v161/tools/headless_bridge/**"
+      - "ajedrez_2c2_v161/assets/fonts/**"
+      - "ajedrez_2c2_v161/assets/ui_theme.tres"
       - "ajedrez_2c2_v161/project.godot"
       - ".github/workflows/test-headless-session-bridge.yml"
   workflow_dispatch:
@@ -17,7 +19,7 @@ permissions:
 jobs:
   live-editor-bridge:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,16 +38,31 @@ jobs:
           echo "/tmp/godot" >> "$GITHUB_PATH"
           /tmp/godot/Godot_v4.7.2-stable_linux.x86_64 --version
 
-      - name: Verify discovery, live commands, editor restart, and reconnection
+      - name: Import project resources and validate QA scripts
         shell: bash
         run: |
           set -euo pipefail
           GODOT="Godot_v4.7.2-stable_linux.x86_64"
           PROJECT="ajedrez_2c2_v161"
           mkdir -p artifacts
+          "$GODOT" --headless --editor --path "$PROJECT" --quit > artifacts/import.log 2>&1
+          "$GODOT" --headless --path "$PROJECT" --script res://tests/run_tests.gd > artifacts/project-tests.log 2>&1
+          if grep -E "SCRIPT ERROR:|Parse Error:|Failed loading resource:|ERROR:.*(does not exist|Could not load|No loader found)" artifacts/import.log artifacts/project-tests.log; then
+            echo "Godot import or QA script validation reported resource/script errors."
+            exit 1
+          fi
+          grep -q "RESULTADO FINAL:" artifacts/project-tests.log
+          echo "PROJECT_IMPORT_AND_TESTS_PASS"
+
+      - name: Verify discovery, live commands, editor restart, and reconnection
+        shell: bash
+        run: |
+          set -euo pipefail
+          GODOT="Godot_v4.7.2-stable_linux.x86_64"
+          PROJECT="ajedrez_2c2_v161"
           xvfb-run -a -s "-screen 0 1600x1000x24" env GODOT="$GODOT" PROJECT="$PROJECT" bash -euo pipefail <<'SCRIPT'
           start_editor() {
-            "$GODOT" --editor --path "$PROJECT" --rendering-method gl_compatibility >> /tmp/godot-editor.log 2>&1 &
+            "$GODOT" --editor --path "$PROJECT" --rendering-method gl_compatibility --rendering-driver opengl3 --audio-driver Dummy >> /tmp/godot-editor.log 2>&1 &
             editor_pid=$!
           }
 
@@ -55,9 +72,7 @@ jobs:
             for _ in $(seq 1 120); do
               local count
               count=$(grep -c "$pattern" /tmp/session-watcher.log 2>/dev/null || true)
-              if [ "$count" -ge "$expected" ]; then
-                return 0
-              fi
+              if [ "$count" -ge "$expected" ]; then return 0; fi
               sleep 0.25
             done
             echo "Timed out waiting for $pattern count $expected"
@@ -66,14 +81,8 @@ jobs:
           }
 
           cleanup() {
-            if [ -n "${watcher_pid:-}" ]; then
-              kill "$watcher_pid" 2>/dev/null || true
-              wait "$watcher_pid" 2>/dev/null || true
-            fi
-            if [ -n "${editor_pid:-}" ]; then
-              kill "$editor_pid" 2>/dev/null || true
-              wait "$editor_pid" 2>/dev/null || true
-            fi
+            if [ -n "${watcher_pid:-}" ]; then kill "$watcher_pid" 2>/dev/null || true; wait "$watcher_pid" 2>/dev/null || true; fi
+            if [ -n "${editor_pid:-}" ]; then kill "$editor_pid" 2>/dev/null || true; wait "$editor_pid" 2>/dev/null || true; fi
           }
           trap cleanup EXIT
 
