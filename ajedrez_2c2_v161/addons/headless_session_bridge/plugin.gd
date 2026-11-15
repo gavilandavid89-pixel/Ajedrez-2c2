@@ -217,6 +217,10 @@ func _handle_request(peer: StreamPeerTCP, line: String) -> void:
 			var inspect_result := _inspect_edited_scene()
 			response["ok"] = bool(inspect_result.get("ok", false))
 			response["result"] = inspect_result
+		"inspect_selection":
+			var selection_result := _inspect_editor_selection()
+			response["ok"] = bool(selection_result.get("ok", false))
+			response["result"] = selection_result
 		"list_project_resources":
 			var resources_result := _list_project_resources()
 			response["ok"] = bool(resources_result.get("ok", false))
@@ -282,6 +286,28 @@ const ALLOWED_NODE_TYPES := [
 ]
 const MAX_INSPECTED_NODES := 200
 const MAX_RESOURCE_ENTRIES := 300
+
+
+func _inspect_editor_selection() -> Dictionary:
+	var editor_selection := EditorInterface.get_selection()
+	if editor_selection == null:
+		return {"ok": false, "error": "editor_selection_unavailable"}
+	var selected_nodes: Array = editor_selection.get_selected_nodes()
+	var entries: Array[Dictionary] = []
+	for node in selected_nodes:
+		if not is_instance_valid(node):
+			continue
+		entries.append({
+			"name": str(node.name),
+			"type": node.get_class(),
+			"path": str(node.get_path()),
+			"inspector": _inspect_object_inspector(node)
+		})
+	return {
+		"ok": true,
+		"selected_count": entries.size(),
+		"selection": entries
+	}
 
 
 func _inspect_edited_scene() -> Dictionary:
