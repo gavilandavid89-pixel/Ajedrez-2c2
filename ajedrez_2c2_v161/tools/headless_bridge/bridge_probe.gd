@@ -75,6 +75,12 @@ func _run() -> void:
 		_fail("Editor rejected the request: " + response_text)
 		return
 	print("BRIDGE_TEST_PASS " + JSON.stringify(response))
+	if action == "clear_test_marker":
+		var idle_ok := await _verify_idle_timeout(registry, expected_project_id)
+		if not idle_ok:
+			_fail("The editor did not close an idle connection after the heartbeat timeout.")
+			return
+		print("BRIDGE_IDLE_TIMEOUT_PASS")
 	quit(0)
 
 
@@ -92,3 +98,48 @@ func _discover_session() -> Dictionary:
 func _fail(message: String) -> void:
 	push_error("BRIDGE_TEST_FAIL: " + message)
 	quit(1)
+
+
+func _verify_idle_timeout(registry: Dictionary, project_id: String) -> bool:
+	var peer := StreamPeerTCP.new()
+	var error := peer.connect_to_host("127.0.0.1", int(registry.get("port", -1)))
+	if error != OK:
+		return false
+	var connect_deadline := Time.get_ticks_msec() + CONNECT_TIMEOUT_MS
+	while peer.get_status() == StreamPeerTCP.STATUS_CONNECTING and Time.get_ticks_msec() < connect_deadline:
+		peer.poll()
+		await create_timer(0.05).timeout
+	if peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
+		return false
+	var request := {
+		"protocol": PROTOCOL_VERSION,
+		"token": str(registry.get("token", "")),
+		"project_id": project_id,
+		"command": "ping"
+	}
+	peer.put_data((JSON.stringify(request) + "\\n").to_utf8_buffer())
+	var response_text := ""
+	var response_deadline := Time.get_ticks_msec() + RESPONSE_TIMEOUT_MS
+	while Time.get_ticks_msec() < response_deadline:
+		peer.poll()
+		var available := peer.get_available_bytes()
+		if available > 0:
+			var packet := peer.get_data(available)
+			if packet[0] == OK:
+				response_text += packet[1].get_string_from_utf8()
+				if response_text.contains("\\n"):
+					break
+		await create_timer(0.05).timeout
+	if response_text.is_empty():
+		return false
+	var parsed: Variant = JSON.parse_string(response_text.strip_edges())
+	if not parsed is Dictionary or not bool(parsed.get("ok", false)):
+		return false
+
+	var idle_deadline := Time.get_ticks_msec() + 8000
+	while Time.get_ticks_msec() < idle_deadline:
+		peer.poll()
+		if peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
+			return true
+		await create_timer(0.1).timeout
+	return false
