@@ -63,7 +63,9 @@ jobs:
           # use Godot's own "Create & Edit" action (not a hand-written project.godot).
           xdotool mousemove --sync 705 117 click 1
           sleep 2
-          import -window root -silent "$GITHUB_WORKSPACE/artifacts/project-manager-projects-tab.png"
+          xdotool mousemove --sync 482 509 click 1
+          sleep 2
+          import -window root -silent "$GITHUB_WORKSPACE/artifacts/project-manager-new-project-dialog.png"
           exit 0
           xdotool key ctrl+a
           xdotool type --clearmodifiers "Bridge Sandbox"
