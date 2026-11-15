@@ -145,7 +145,13 @@ jobs:
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- add_node '{"type":"Label","name":"HeadlessBridgeSmokeTest"}'
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- add_node '{"type":"StaticBody2D","name":"HeadlessCollisionBody"}'
           "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- add_node '{"type":"CollisionShape2D","name":"HeadlessCollisionShape","parent_path":"HeadlessCollisionBody"}'
-          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- inspect_scene
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- set_node_properties '{"node_path":"HeadlessCollisionBody","properties":{"collision_layer":2,"collision_mask":3}}'
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- set_node_properties '{"node_path":"HeadlessCollisionShape","properties":{"disabled":false,"one_way_collision":true}}'
+          "$GODOT" --headless --path "$PROJECT" --script res://tools/headless_bridge/bridge_probe.gd -- inspect_scene | tee artifacts/physics-scene-inspection.json
+          grep -q '"collision_layer":2' artifacts/physics-scene-inspection.json
+          grep -q '"collision_mask":3' artifacts/physics-scene-inspection.json
+          grep -q '"one_way_collision":true' artifacts/physics-scene-inspection.json
+          echo "PHYSICS_PROPERTY_EDIT_PASS"
           kill -0 "$watcher_pid"
           echo "CONCURRENT_WATCHER_AND_PROBE_PASS"
           kill "$watcher_pid" 2>/dev/null || true
