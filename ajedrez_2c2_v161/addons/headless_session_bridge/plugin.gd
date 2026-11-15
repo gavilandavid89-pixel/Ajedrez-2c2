@@ -247,7 +247,7 @@ func _collect_resources(path: String, entries: Array[String]) -> void:
 	directory.list_dir_begin()
 	var item := directory.get_next()
 	while not item.is_empty() and entries.size() < MAX_RESOURCE_ENTRIES:
-		if item.begins_with(".") or item == "addons":
+		if item.begins_with("."):
 			item = directory.get_next()
 			continue
 		var child_path := path.path_join(item)
